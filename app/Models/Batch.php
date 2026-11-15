@@ -64,14 +64,29 @@ class Batch extends Model
         return $this->hasMany(BatchMaterialRequirement::class);
     }
 
+    public function materialRequirements()
+    {
+        return $this->requirements();
+    }
+
     public function allocations()
     {
         return $this->hasMany(BatchMaterialAllocation::class);
     }
 
+    public function materialAllocations()
+    {
+        return $this->allocations();
+    }
+
     public function consumptions()
     {
         return $this->hasMany(BatchMaterialConsumption::class);
+    }
+
+    public function materialConsumptions()
+    {
+        return $this->consumptions();
     }
 
     public function stageExecutions()

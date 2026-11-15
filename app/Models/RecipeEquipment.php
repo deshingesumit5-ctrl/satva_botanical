@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class RecipeEquipment extends Model
 {
+    protected $table = 'recipe_equipments';
     protected $guarded = [];
 
     protected $casts = [

@@ -28,6 +28,11 @@ class Grn extends Model
         return $this->belongsTo(Warehouse::class);
     }
 
+    public function plant()
+    {
+        return $this->belongsTo(Plant::class, 'plant_id')->withDefault(['name' => 'Main Extraction Plant']);
+    }
+
     public function receivedByUser()
     {
         return $this->belongsTo(User::class, 'received_by');
@@ -36,5 +41,10 @@ class Grn extends Model
     public function items()
     {
         return $this->hasMany(GrnItem::class);
+    }
+
+    public function stockLots()
+    {
+        return $this->hasMany(StockLot::class, 'grn_id');
     }
 }

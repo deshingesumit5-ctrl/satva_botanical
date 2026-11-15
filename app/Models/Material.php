@@ -22,6 +22,11 @@ class Material extends Model
         return $this->belongsTo(Uom::class, 'base_uom_id');
     }
 
+    public function uom()
+    {
+        return $this->baseUom();
+    }
+
     public function alternateUom()
     {
         return $this->belongsTo(Uom::class, 'alternate_uom_id');

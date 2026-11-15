@@ -9,4 +9,24 @@ class QcTest extends Model
 {
     use SoftDeletes;
     protected $guarded = [];
+
+    public function getNameAttribute()
+    {
+        return $this->attributes['test_name'] ?? $this->attributes['name'] ?? '';
+    }
+
+    public function getCodeAttribute()
+    {
+        return $this->attributes['test_code'] ?? $this->attributes['code'] ?? '';
+    }
+
+    public function setNameAttribute($value)
+    {
+        $this->attributes['test_name'] = $value;
+    }
+
+    public function setCodeAttribute($value)
+    {
+        $this->attributes['test_code'] = $value;
+    }
 }

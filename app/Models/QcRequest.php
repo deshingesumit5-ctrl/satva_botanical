@@ -24,6 +24,11 @@ class QcRequest extends Model
         return $this->belongsTo(BatchStageExecution::class, 'batch_stage_execution_id');
     }
 
+    public function material()
+    {
+        return $this->belongsTo(Material::class, 'material_id')->withDefault();
+    }
+
     public function submittedByUser()
     {
         return $this->belongsTo(User::class, 'submitted_by');

@@ -35,6 +35,18 @@ class GrnItem extends Model
         return $this->belongsTo(Warehouse::class);
     }
 
+    public function uom()
+    {
+        return $this->belongsTo(Uom::class, 'uom_id')->withDefault(function() {
+            return $this->material ? $this->material->uom : Uom::first();
+        });
+    }
+
+    public function storageLocation()
+    {
+        return $this->belongsTo(StorageLocation::class, 'storage_location_id')->withDefault();
+    }
+
     public function stockLot()
     {
         return $this->hasOne(StockLot::class, 'grn_item_id');

@@ -50,6 +50,31 @@ class StockLedger extends Model
         return $this->belongsTo(Warehouse::class);
     }
 
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function getReferenceNumberAttribute()
+    {
+        return $this->reference_no ?? $this->transaction_number;
+    }
+
+    public function getQuantityAttribute()
+    {
+        return $this->inward_qty > 0 ? $this->inward_qty : -1 * $this->outward_qty;
+    }
+
+    public function getBalanceAfterAttribute()
+    {
+        return $this->balance_qty;
+    }
+
     public function createdByUser()
     {
         return $this->belongsTo(User::class, 'created_by');

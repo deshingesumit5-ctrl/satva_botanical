@@ -18,6 +18,11 @@ class PurchaseRequisition extends Model
         return $this->belongsTo(Department::class);
     }
 
+    public function plant()
+    {
+        return $this->hasOneThrough(Plant::class, Department::class, 'id', 'id', 'department_id', 'plant_id');
+    }
+
     public function requestedByUser()
     {
         return $this->belongsTo(User::class, 'requested_by');

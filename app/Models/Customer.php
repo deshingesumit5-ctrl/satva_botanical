@@ -18,4 +18,19 @@ class Customer extends Model
     {
         return $this->hasMany(SalesOrder::class);
     }
+
+    public function salesInvoices()
+    {
+        return $this->hasMany(SalesInvoice::class);
+    }
+
+    public function invoices()
+    {
+        return $this->hasMany(SalesInvoice::class);
+    }
+
+    public function receipts()
+    {
+        return $this->hasMany(CustomerReceipt::class);
+    }
 }

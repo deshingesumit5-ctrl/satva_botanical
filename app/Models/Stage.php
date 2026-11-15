@@ -18,6 +18,26 @@ class Stage extends Model
         'default_duration' => 'integer',
     ];
 
+    public function getNameAttribute()
+    {
+        return $this->attributes['stage_name'] ?? $this->attributes['name'] ?? '';
+    }
+
+    public function getCodeAttribute()
+    {
+        return $this->attributes['stage_code'] ?? $this->attributes['code'] ?? '';
+    }
+
+    public function setNameAttribute($value)
+    {
+        $this->attributes['stage_name'] = $value;
+    }
+
+    public function setCodeAttribute($value)
+    {
+        $this->attributes['stage_code'] = $value;
+    }
+
     public function defaultEquipment()
     {
         return $this->belongsTo(Equipment::class, 'default_equipment_id');

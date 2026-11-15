@@ -37,6 +37,16 @@ class User extends Authenticatable
         return $this->belongsTo(Plant::class);
     }
 
+    public function notifications()
+    {
+        return $this->hasMany(\App\Models\Notification::class, 'user_id');
+    }
+
+    public function unreadNotifications()
+    {
+        return $this->hasMany(\App\Models\Notification::class, 'user_id')->where('is_read', false);
+    }
+
     public function isSuperAdmin(): bool
     {
         return $this->role && in_array(strtolower($this->role->role_code), ['super_admin', 'super admin']);

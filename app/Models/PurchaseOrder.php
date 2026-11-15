@@ -26,6 +26,11 @@ class PurchaseOrder extends Model
         return $this->belongsTo(PurchaseRequisition::class, 'purchase_requisition_id');
     }
 
+    public function plant()
+    {
+        return $this->belongsTo(Plant::class, 'plant_id')->withDefault(['name' => 'Main Extraction Plant']);
+    }
+
     public function supplier()
     {
         return $this->belongsTo(Supplier::class);

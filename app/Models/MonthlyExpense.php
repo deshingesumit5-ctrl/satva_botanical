@@ -21,6 +21,16 @@ class MonthlyExpense extends Model
         return $this->belongsTo(User::class, 'entered_by');
     }
 
+    public function createdByUser()
+    {
+        return $this->enteredByUser();
+    }
+
+    public function plant()
+    {
+        return $this->belongsTo(Plant::class, 'plant_id')->withDefault(['name' => 'All Plants']);
+    }
+
     public function approvedByUser()
     {
         return $this->belongsTo(User::class, 'approved_by');

@@ -22,6 +22,11 @@ class ExpenseAllocation extends Model
         return $this->belongsTo(User::class, 'posted_by');
     }
 
+    public function allocatedByUser()
+    {
+        return $this->postedByUser();
+    }
+
     public function items()
     {
         return $this->hasMany(ExpenseAllocationItem::class);
