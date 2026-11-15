@@ -52,7 +52,7 @@
 
                     <!-- Masters Dropdown -->
                     <li class="nav-item dropdown">
-                        <a class="nav-link nav-link-sattva dropdown-toggle {{ request()->is('masters*') ? 'active' : '' }}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <a class="nav-link nav-link-sattva dropdown-toggle {{ request()->is('masters*') ? 'active' : '' }}" href="#" role="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
                             <i class="bi bi-layers-fill me-1"></i> Masters
                         </a>
                         <ul class="dropdown-menu dropdown-menu-sattva shadow-lg">
@@ -81,7 +81,7 @@
 
                     <!-- Recipe Dropdown -->
                     <li class="nav-item dropdown">
-                        <a class="nav-link nav-link-sattva dropdown-toggle {{ request()->is('recipe*') ? 'active' : '' }}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <a class="nav-link nav-link-sattva dropdown-toggle {{ request()->is('recipe*') ? 'active' : '' }}" href="#" role="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
                             <i class="bi bi-journal-text me-1"></i> Recipe
                         </a>
                         <ul class="dropdown-menu dropdown-menu-sattva shadow-lg">
@@ -92,7 +92,7 @@
 
                     <!-- Purchase Dropdown -->
                     <li class="nav-item dropdown">
-                        <a class="nav-link nav-link-sattva dropdown-toggle {{ request()->is('purchase*') ? 'active' : '' }}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <a class="nav-link nav-link-sattva dropdown-toggle {{ request()->is('purchase*') ? 'active' : '' }}" href="#" role="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
                             <i class="bi bi-cart3 me-1"></i> Purchase
                         </a>
                         <ul class="dropdown-menu dropdown-menu-sattva shadow-lg">
@@ -104,7 +104,7 @@
 
                     <!-- Inventory Dropdown -->
                     <li class="nav-item dropdown">
-                        <a class="nav-link nav-link-sattva dropdown-toggle {{ request()->is('inventory*') ? 'active' : '' }}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <a class="nav-link nav-link-sattva dropdown-toggle {{ request()->is('inventory*') ? 'active' : '' }}" href="#" role="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
                             <i class="bi bi-box-fill me-1"></i> Inventory
                         </a>
                         <ul class="dropdown-menu dropdown-menu-sattva shadow-lg">
@@ -124,7 +124,7 @@
 
                     <!-- Production Dropdown -->
                     <li class="nav-item dropdown">
-                        <a class="nav-link nav-link-sattva dropdown-toggle {{ request()->is('production*') ? 'active' : '' }}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <a class="nav-link nav-link-sattva dropdown-toggle {{ request()->is('production*') ? 'active' : '' }}" href="#" role="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
                             <i class="bi bi-gear-wide-connected me-1"></i> Production
                         </a>
                         <ul class="dropdown-menu dropdown-menu-sattva shadow-lg">
@@ -137,7 +137,7 @@
 
                     <!-- QC Dropdown -->
                     <li class="nav-item dropdown">
-                        <a class="nav-link nav-link-sattva dropdown-toggle {{ request()->is('qc*') ? 'active' : '' }}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <a class="nav-link nav-link-sattva dropdown-toggle {{ request()->is('qc*') ? 'active' : '' }}" href="#" role="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
                             <i class="bi bi-shield-check me-1"></i> QC
                         </a>
                         <ul class="dropdown-menu dropdown-menu-sattva shadow-lg">
@@ -149,7 +149,7 @@
 
                     <!-- Sales Dropdown -->
                     <li class="nav-item dropdown">
-                        <a class="nav-link nav-link-sattva dropdown-toggle {{ request()->is('sales*') ? 'active' : '' }}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <a class="nav-link nav-link-sattva dropdown-toggle {{ request()->is('sales*') ? 'active' : '' }}" href="#" role="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
                             <i class="bi bi-briefcase me-1"></i> Sales
                         </a>
                         <ul class="dropdown-menu dropdown-menu-sattva shadow-lg">
@@ -166,7 +166,7 @@
 
                     <!-- Costing Dropdown -->
                     <li class="nav-item dropdown">
-                        <a class="nav-link nav-link-sattva dropdown-toggle {{ request()->is('costing*') ? 'active' : '' }}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <a class="nav-link nav-link-sattva dropdown-toggle {{ request()->is('costing*') ? 'active' : '' }}" href="#" role="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
                             <i class="bi bi-calculator me-1"></i> Costing
                         </a>
                         <ul class="dropdown-menu dropdown-menu-sattva shadow-lg">
@@ -178,7 +178,7 @@
 
                     <!-- Reports Dropdown -->
                     <li class="nav-item dropdown">
-                        <a class="nav-link nav-link-sattva dropdown-toggle {{ request()->is('reports*') ? 'active' : '' }}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <a class="nav-link nav-link-sattva dropdown-toggle {{ request()->is('reports*') ? 'active' : '' }}" href="#" role="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
                             <i class="bi bi-graph-up me-1"></i> Reports
                         </a>
                         <ul class="dropdown-menu dropdown-menu-sattva shadow-lg">
@@ -194,7 +194,7 @@
                     <!-- Roles & Access Dropdown -->
                     @if(auth()->check() && (auth()->user()->isSuperAdmin() || auth()->user()->hasPermission('admin.users.view')))
                     <li class="nav-item dropdown">
-                        <a class="nav-link nav-link-sattva dropdown-toggle {{ request()->is('admin*') ? 'active' : '' }}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <a class="nav-link nav-link-sattva dropdown-toggle {{ request()->is('admin*') ? 'active' : '' }}" href="#" role="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
                             <i class="bi bi-person-lock me-1"></i> Access
                         </a>
                         <ul class="dropdown-menu dropdown-menu-sattva shadow-lg">
@@ -619,6 +619,146 @@
     
 
     <script>
+        // =========================================================================
+        // Desktop Top-Menu Dropdowns (Teleport & Fixed Position Above Scrollbar)
+        // =========================================================================
+        (function () {
+            const scrollMenu = document.querySelector('.sattva-scroll-menu');
+            if (!scrollMenu) return;
+
+            let activeMenu = null;
+            let activeToggle = null;
+            let originalParent = null;
+            let hoverTimeout = null;
+
+            function returnActiveMenu() {
+                if (activeMenu && originalParent) {
+                    window.removeEventListener('scroll', updatePosition, true);
+                    window.removeEventListener('resize', updatePosition);
+                    activeMenu.style.position = '';
+                    activeMenu.style.top = '';
+                    activeMenu.style.left = '';
+                    activeMenu.style.zIndex = '';
+                    activeMenu.style.display = '';
+                    activeMenu.style.visibility = '';
+                    activeMenu.style.opacity = '';
+                    activeMenu.style.margin = '';
+                    if (activeMenu.parentElement !== originalParent) {
+                        originalParent.appendChild(activeMenu);
+                    }
+                    activeMenu = null;
+                    activeToggle = null;
+                    originalParent = null;
+                }
+            }
+
+            function updatePosition() {
+                if (!activeMenu || !activeToggle) return;
+                const rect = activeToggle.getBoundingClientRect();
+                activeMenu.style.position = 'fixed';
+                activeMenu.style.top = (rect.bottom + 4) + 'px';
+                activeMenu.style.zIndex = '100050';
+                activeMenu.style.display = 'block';
+                activeMenu.style.visibility = 'visible';
+                activeMenu.style.opacity = '1';
+                activeMenu.style.margin = '0';
+
+                const menuWidth = Math.max(activeMenu.offsetWidth || 230, 220);
+                let left = rect.left;
+                if (left + menuWidth > window.innerWidth - 10) {
+                    left = window.innerWidth - menuWidth - 10;
+                }
+                if (left < 10) left = 10;
+                activeMenu.style.left = left + 'px';
+            }
+
+            document.querySelectorAll('.sattva-scroll-menu .dropdown').forEach(function (dropdownEl) {
+                const toggle = dropdownEl.querySelector('[data-bs-toggle="dropdown"]');
+                const menu = dropdownEl.querySelector('.dropdown-menu');
+                if (!toggle || !menu) return;
+
+                dropdownEl.addEventListener('show.bs.dropdown', function () {
+                    returnActiveMenu();
+                    activeToggle = toggle;
+                    activeMenu = menu;
+                    originalParent = dropdownEl;
+
+                    // Teleport menu to document.body so it floats completely above all scroll containers
+                    document.body.appendChild(menu);
+                    updatePosition();
+                    requestAnimationFrame(updatePosition);
+
+                    window.addEventListener('scroll', updatePosition, true);
+                    window.addEventListener('resize', updatePosition);
+                });
+
+                dropdownEl.addEventListener('hidden.bs.dropdown', function () {
+                    returnActiveMenu();
+                });
+
+                // Desktop Hover interaction (screens >= 992px)
+                dropdownEl.addEventListener('mouseenter', function () {
+                    if (window.innerWidth < 992) return;
+                    clearTimeout(hoverTimeout);
+                    const inst = bootstrap.Dropdown.getOrCreateInstance(toggle);
+                    inst.show();
+                });
+
+                dropdownEl.addEventListener('mouseleave', function () {
+                    if (window.innerWidth < 992) return;
+                    hoverTimeout = setTimeout(function () {
+                        if (activeMenu && (activeMenu.matches(':hover') || activeMenu.contains(document.activeElement))) {
+                            return;
+                        }
+                        const inst = bootstrap.Dropdown.getInstance(toggle);
+                        if (inst) inst.hide();
+                        returnActiveMenu();
+                    }, 180);
+                });
+            });
+
+            // Keep menu open while hovering over the teleported menu itself
+            document.addEventListener('mouseover', function (e) {
+                if (activeMenu && (activeMenu === e.target || activeMenu.contains(e.target))) {
+                    clearTimeout(hoverTimeout);
+                }
+            });
+
+            document.addEventListener('mouseout', function (e) {
+                if (activeMenu && (activeMenu === e.target || activeMenu.contains(e.target))) {
+                    if (!activeMenu.contains(e.relatedTarget) && activeToggle !== e.relatedTarget && !activeToggle.contains(e.relatedTarget)) {
+                        hoverTimeout = setTimeout(function () {
+                            if (activeToggle) {
+                                const inst = bootstrap.Dropdown.getInstance(activeToggle);
+                                if (inst) inst.hide();
+                            }
+                            returnActiveMenu();
+                        }, 180);
+                    }
+                }
+            });
+
+            // Close on horizontal scrolling of the navbar menu
+            scrollMenu.addEventListener('scroll', function () {
+                if (activeToggle) {
+                    const inst = bootstrap.Dropdown.getInstance(activeToggle);
+                    if (inst) inst.hide();
+                    returnActiveMenu();
+                }
+            });
+
+            // Click outside handler
+            document.addEventListener('click', function (e) {
+                if (activeMenu && activeToggle) {
+                    if (!activeMenu.contains(e.target) && !activeToggle.contains(e.target)) {
+                        const inst = bootstrap.Dropdown.getInstance(activeToggle);
+                        if (inst) inst.hide();
+                        returnActiveMenu();
+                    }
+                }
+            }, true);
+        })();
+
         function confirmLogout() {
             openConfirmModal({
                 title: 'Confirm Logout',

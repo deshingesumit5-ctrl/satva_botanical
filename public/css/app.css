@@ -426,9 +426,9 @@ body {
 }
 
 /* ===== Single-line scrollable top menu (laptop) ===== */
-.navbar-sattva { overflow: visible; }
+.navbar-sattva { overflow: visible !important; }
 .navbar-sattva .container-fluid { flex-wrap: nowrap; }
-.navbar-sattva .navbar-collapse { flex: 1 1 auto; flex-wrap: nowrap; min-width: 0; }
+.navbar-sattva .navbar-collapse { flex: 1 1 auto; flex-wrap: nowrap; min-width: 0; overflow: visible !important; }
 .navbar-sattva .navbar-collapse > .d-flex { flex: 0 0 auto; margin-left: 8px; }
 
 .sattva-scroll-menu {
@@ -436,30 +436,34 @@ body {
   min-width: 0;
   flex-wrap: nowrap;
   overflow-x: auto;
-  overflow-y: hidden;
+  overflow-y: visible;
   white-space: nowrap;
-  padding-bottom: 12px;              /* space so the scroll bar drops below the black bar */
-  margin-bottom: -20px !important;   /* keeps the menu height unchanged */
+  padding-bottom: 4px;
+  margin-bottom: 0 !important;
 }
 .sattva-scroll-menu .nav-item { flex: 0 0 auto; }
 .sattva-scroll-menu .nav-link {
   white-space: nowrap;
-  padding-left: .6rem;
-  padding-right: .6rem;
-  font-size: .86rem;
+  padding-left: .55rem;
+  padding-right: .55rem;
+  font-size: .84rem;
 }
 
-/* Scroll bar look (Chrome / Edge) */
-.sattva-scroll-menu::-webkit-scrollbar { height: 8px; }
-.sattva-scroll-menu::-webkit-scrollbar-track { background: #e2e8f0; border-radius: 8px; }
-.sattva-scroll-menu::-webkit-scrollbar-thumb { background: #059669; border-radius: 8px; }
+/* Elegant slim scrollbar on navbar (stays inside dark header, never bleeds into content) */
+.sattva-scroll-menu::-webkit-scrollbar { height: 4px; }
+.sattva-scroll-menu::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.08); border-radius: 4px; }
+.sattva-scroll-menu::-webkit-scrollbar-thumb { background: #10b981; border-radius: 4px; }
 .sattva-scroll-menu::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
-/* Firefox */
 @supports not selector(::-webkit-scrollbar) {
-  .sattva-scroll-menu { scrollbar-width: thin; scrollbar-color: #059669 #e2e8f0; }
+  .sattva-scroll-menu { scrollbar-width: thin; scrollbar-color: #10b981 rgba(255, 255, 255, 0.08); }
 }
 
-.navbar-sattva .dropdown-menu { max-height: 75vh; overflow-y: auto; z-index: 1055; }
+.dropdown-menu-sattva {
+  max-height: 80vh !important;
+  overflow-y: auto !important;
+  z-index: 100050 !important;
+  box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.08) !important;
+}
 
 /* Header icon buttons: bell, profile, settings, full screen */
 .header-icon-btn {
