@@ -33,12 +33,59 @@ body {
 
 .navbar-brand-sattva {
     color: #ffffff;
-    font-weight: 700;
-    font-size: 1.2rem;
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 0.6rem;
+    gap: 0.65rem;
     text-decoration: none;
+    transition: opacity 0.15s ease-in-out;
+}
+
+.navbar-brand-sattva:hover {
+    color: #ffffff;
+    opacity: 0.92;
+}
+
+.brand-logo-badge {
+    background: #ffffff;
+    border-radius: 8px;
+    padding: 3px 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    height: 38px;
+    flex-shrink: 0;
+}
+
+.brand-logo-badge img {
+    height: 32px;
+    width: auto;
+    object-fit: contain;
+    display: block;
+}
+
+.brand-text-wrapper {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    line-height: 1.1;
+}
+
+.brand-text-wrapper .brand-name {
+    font-size: 1.05rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    color: #ffffff;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+.brand-text-wrapper .brand-tag {
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    color: #34d399;
+    text-transform: uppercase;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
 .navbar-brand-sattva .brand-leaf {
@@ -55,7 +102,8 @@ body {
     transition: all 0.2s ease-in-out;
 }
 
-.nav-link-sattva:hover, .nav-link-sattva:focus {
+.nav-link-sattva:hover,
+.nav-link-sattva:focus {
     color: #ffffff !important;
     background-color: rgba(255, 255, 255, 0.1);
 }
@@ -126,7 +174,8 @@ body {
     transition: all 0.2s;
 }
 
-.offcanvas-sattva .sidebar-sublink:hover, .offcanvas-sattva .sidebar-sublink.active {
+.offcanvas-sattva .sidebar-sublink:hover,
+.offcanvas-sattva .sidebar-sublink.active {
     color: #ffffff;
     background-color: rgba(5, 150, 105, 0.25);
 }
@@ -374,15 +423,15 @@ body {
     .table-responsive-cards thead {
         display: none;
     }
-    
-    .table-responsive-cards, 
-    .table-responsive-cards tbody, 
-    .table-responsive-cards tr, 
+
+    .table-responsive-cards,
+    .table-responsive-cards tbody,
+    .table-responsive-cards tr,
     .table-responsive-cards td {
         display: block;
         width: 100%;
     }
-    
+
     .table-responsive-cards tr {
         margin-bottom: 1rem;
         background: #ffffff;
@@ -391,7 +440,7 @@ body {
         padding: 0.75rem 1rem;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
     }
-    
+
     .table-responsive-cards td {
         display: flex;
         justify-content: space-between;
@@ -400,13 +449,13 @@ body {
         border-bottom: 1px dashed #e2e8f0;
         text-align: right;
     }
-    
+
     .table-responsive-cards td:last-child {
         border-bottom: none;
         padding-top: 0.75rem !important;
         justify-content: flex-end;
     }
-    
+
     .table-responsive-cards td::before {
         content: attr(data-label);
         font-weight: 600;
@@ -426,54 +475,174 @@ body {
 }
 
 /* ===== Single-line scrollable top menu (laptop) ===== */
-.navbar-sattva { overflow: visible !important; }
-.navbar-sattva .container-fluid { flex-wrap: nowrap; }
-.navbar-sattva .navbar-collapse { flex: 1 1 auto; flex-wrap: nowrap; min-width: 0; overflow: visible !important; }
-.navbar-sattva .navbar-collapse > .d-flex { flex: 0 0 auto; margin-left: 8px; }
+.navbar-sattva {
+    overflow: visible !important;
+}
+
+.navbar-sattva .container-fluid {
+    flex-wrap: nowrap;
+}
+
+.navbar-sattva .navbar-collapse {
+    flex: 1 1 auto;
+    flex-wrap: nowrap;
+    min-width: 0;
+    overflow: visible !important;
+}
+
+.navbar-sattva .navbar-collapse>.d-flex {
+    flex: 0 0 auto;
+    margin-left: 8px;
+}
 
 .sattva-scroll-menu {
-  flex: 1 1 auto;
-  min-width: 0;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  overflow-y: visible;
-  white-space: nowrap;
-  padding-bottom: 4px;
-  margin-bottom: 0 !important;
+    flex: 1 1 auto;
+    min-width: 0;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: visible;
+    white-space: nowrap;
+    padding-bottom: 4px;
+    margin-bottom: 0 !important;
 }
-.sattva-scroll-menu .nav-item { flex: 0 0 auto; }
+
+.sattva-scroll-menu .nav-item {
+    flex: 0 0 auto;
+}
+
 .sattva-scroll-menu .nav-link {
-  white-space: nowrap;
-  padding-left: .55rem;
-  padding-right: .55rem;
-  font-size: .84rem;
+    white-space: nowrap;
+    padding-left: .55rem;
+    padding-right: .55rem;
+    font-size: .84rem;
 }
 
 /* Elegant slim scrollbar on navbar (stays inside dark header, never bleeds into content) */
-.sattva-scroll-menu::-webkit-scrollbar { height: 4px; }
-.sattva-scroll-menu::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.08); border-radius: 4px; }
-.sattva-scroll-menu::-webkit-scrollbar-thumb { background: #10b981; border-radius: 4px; }
-.sattva-scroll-menu::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+.sattva-scroll-menu::-webkit-scrollbar {
+    height: 4px;
+}
+
+.sattva-scroll-menu::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+}
+
+.sattva-scroll-menu::-webkit-scrollbar-thumb {
+    background: #10b981;
+    border-radius: 4px;
+}
+
+.sattva-scroll-menu::-webkit-scrollbar-button {
+    display: none;
+    width: 0;
+    height: 0;
+}
+
 @supports not selector(::-webkit-scrollbar) {
-  .sattva-scroll-menu { scrollbar-width: thin; scrollbar-color: #10b981 rgba(255, 255, 255, 0.08); }
+    .sattva-scroll-menu {
+        scrollbar-width: thin;
+        scrollbar-color: #10b981 rgba(255, 255, 255, 0.08);
+    }
 }
 
 .dropdown-menu-sattva {
-  max-height: 80vh !important;
-  overflow-y: auto !important;
-  z-index: 100050 !important;
-  box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.08) !important;
+    max-height: 80vh !important;
+    overflow-y: auto !important;
+    z-index: 100050 !important;
+    box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.08) !important;
 }
 
 /* Header icon buttons: bell, profile, settings, full screen */
 .header-icon-btn {
-  width: 38px; height: 38px;
-  display: inline-flex; align-items: center; justify-content: center;
-  border: 0; border-radius: 50%;
-  background: transparent; color: #ffffff;
-  font-size: 1.15rem; text-decoration: none;
-  transition: background .2s;
+    width: 38px;
+    height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: #ffffff;
+    font-size: 1.15rem;
+    text-decoration: none;
+    transition: background .2s;
 }
-.header-icon-btn:hover, .header-icon-btn:focus { background: rgba(255,255,255,.14); color: #ffffff; }
-.header-icon-btn .bi-person-circle { font-size: 1.55rem; }
-.header-icon-btn img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid #34d399; }
+
+.header-icon-btn:hover,
+.header-icon-btn:focus {
+    background: rgba(255, 255, 255, .14);
+    color: #ffffff;
+}
+
+.header-icon-btn .bi-person-circle {
+    font-size: 1.55rem;
+}
+
+.header-icon-btn img {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #34d399;
+}
+
+/* Page Title Logo Badge */
+.page-title-logo-badge {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+}
+
+.page-title-logo-badge img {
+    max-height: 36px;
+    max-width: 36px;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    display: block;
+}
+
+/* Pagination Theme Styling */
+.pagination {
+    margin-bottom: 0;
+    gap: 3px;
+    flex-wrap: wrap;
+}
+
+.pagination .page-link {
+    color: #1f2937;
+    font-size: 0.84rem;
+    font-weight: 500;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px !important;
+    padding: 0.32rem 0.65rem;
+    transition: all 0.15s ease-in-out;
+}
+
+.pagination .page-link:hover {
+    color: #059669;
+    background-color: #f0fdf4;
+    border-color: #a7f3d0;
+}
+
+.pagination .page-item.active .page-link {
+    background-color: #1fbf8f;
+    border-color: #1fbf8f;
+    color: #ffffff;
+    font-weight: 600;
+    box-shadow: 0 2px 6px rgba(31, 191, 143, 0.35);
+}
+
+.pagination .page-item.disabled .page-link {
+    color: #94a3b8;
+    background-color: #f8fafc;
+    border-color: #e2e8f0;
+}

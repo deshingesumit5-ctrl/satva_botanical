@@ -1,47 +1,101 @@
 @extends('layouts.auth')
 
 @section('content')
-<form method="POST" action="{{ route('login.post') }}">
+<div class="login-logo-container">
+    <img src="{{ asset('images/sattva-logo.png') }}" alt="Sattva Botanicals" class="login-logo">
+</div>
+
+{{-- Red alert for general authentication & account errors --}}
+@if(session('error'))
+    <div class="alert alert-danger py-2 px-3 small rounded-2 mb-3">
+        <i class="bi bi-exclamation-circle me-1"></i> {{ session('error') }}
+    </div>
+@elseif($errors->has('login') && ($errors->first('login') === 'Invalid username/email or password.' || str_contains($errors->first('login'), 'Too many login attempts') || str_contains($errors->first('login'), 'inactive')))
+    <div class="alert alert-danger py-2 px-3 small rounded-2 mb-3">
+        <i class="bi bi-exclamation-circle me-1"></i> {{ $errors->first('login') }}
+    </div>
+@endif
+
+@if(session('status') || session('success'))
+    <div class="alert alert-success py-2 px-3 small rounded-2 mb-3">
+        <i class="bi bi-check-circle me-1"></i> {{ session('status') ?? session('success') }}
+    </div>
+@endif
+
+<form method="POST" action="{{ route('login.post') }}" id="loginForm">
     @csrf
 
     <div class="mb-3">
-        <label for="login" class="form-label fw-semibold text-secondary small">Username or Email</label>
-        <div class="input-group">
-            <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-person"></i></span>
-            <input type="text" name="login" id="login" class="form-control bg-light border-start-0" 
-                   value="{{ old('login', 'admin') }}" required autofocus placeholder="admin or admin@sattvabotanical.local">
-        </div>
+        <label for="login" class="login-form-label">Username or Email</label>
+        <input type="text" 
+               name="login" 
+               id="login" 
+               class="login-input @if($errors->has('login') && !in_array($errors->first('login'), ['Invalid username/email or password.']) && !str_contains($errors->first('login'), 'inactive') && !str_contains($errors->first('login'), 'Too many login attempts')) is-invalid @endif" 
+               value="{{ old('login') }}" 
+               required 
+               autofocus 
+               autocomplete="username" 
+               placeholder="Enter username or email">
+        @if($errors->has('login') && !in_array($errors->first('login'), ['Invalid username/email or password.']) && !str_contains($errors->first('login'), 'inactive') && !str_contains($errors->first('login'), 'Too many login attempts'))
+            <div class="field-error-text">
+                <i class="bi bi-exclamation-circle me-1"></i>{{ $errors->first('login') }}
+            </div>
+        @endif
     </div>
 
-    <div class="mb-3">
-        <label for="password" class="form-label fw-semibold text-secondary small">Password</label>
-        <div class="input-group">
-            <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-lock"></i></span>
-            <input type="password" name="password" id="password" class="form-control bg-light border-start-0 border-end-0" 
-                   required placeholder="Enter your password">
-            <button class="btn btn-light border border-start-0 text-muted" type="button" onclick="togglePassword('password', 'passwordToggleIcon')">
+    <div class="mb-2">
+        <label for="password" class="login-form-label">Password</label>
+        <div class="password-field-wrapper">
+            <input type="password" 
+                   name="password" 
+                   id="password" 
+                   class="login-input @error('password') is-invalid @enderror" 
+                   required 
+                   autocomplete="current-password" 
+                   placeholder="Enter your password">
+            <button class="password-toggle-btn" type="button" onclick="togglePassword('password', 'passwordToggleIcon')" aria-label="Toggle password visibility">
                 <i class="bi bi-eye" id="passwordToggleIcon"></i>
             </button>
         </div>
+        @error('password')
+            <div class="field-error-text">
+                <i class="bi bi-exclamation-circle me-1"></i>{{ $message }}
+            </div>
+        @enderror
     </div>
 
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div class="form-check">
-            <input class="form-check-input" type="checkbox" name="remember" id="remember" checked>
-            <label class="form-check-label small text-secondary" for="remember">
-                Remember me
-            </label>
-        </div>
+    <div class="mb-3 text-start">
+        <a href="javascript:void(0)" class="forgot-password-link" data-bs-toggle="modal" data-bs-target="#forgotPasswordModal">Forgot password?</a>
     </div>
 
-    <button type="submit" class="btn btn-primary-sattva w-100 py-2 fw-bold shadow">
-        Sign In <i class="bi bi-arrow-right ms-1"></i>
+    <div class="login-form-check">
+        <input class="login-checkbox" type="checkbox" name="remember" id="remember" checked>
+        <label class="login-checkbox-label" for="remember">
+            Remember me
+        </label>
+    </div>
+
+    <button type="submit" id="signInBtn" class="btn-signin">
+        <span id="signInSpinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+        <span id="signInText">Sign in</span>
     </button>
 </form>
 
-<div class="mt-4 pt-3 border-top text-center">
-    <div class="badge bg-light text-muted border p-2 small font-monospace">
-        Default: <strong>admin</strong> / <strong>Admin@12345</strong>
-    </div>
-</div>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const form = document.getElementById('loginForm');
+        if (form) {
+            form.addEventListener('submit', function () {
+                const btn = document.getElementById('signInBtn');
+                const spinner = document.getElementById('signInSpinner');
+                const text = document.getElementById('signInText');
+                if (btn && form.checkValidity()) {
+                    btn.disabled = true;
+                    if (spinner) spinner.classList.remove('d-none');
+                    if (text) text.textContent = 'Signing in...';
+                }
+            });
+        }
+    });
+</script>
 @endsection

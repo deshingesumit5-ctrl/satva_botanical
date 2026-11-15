@@ -103,6 +103,7 @@ class UserController extends Controller
             'name' => 'required|string|max:100',
             'email' => ['required', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
             'mobile' => 'nullable|string|max:20',
+            'password' => 'nullable|string|min:6',
             'role_id' => 'required|exists:roles,id',
             'department_id' => 'nullable|exists:departments,id',
             'plant_id' => 'nullable|exists:plants,id',
@@ -112,6 +113,12 @@ class UserController extends Controller
 
         if ($request->hasFile('profile_image')) {
             $validated['profile_image'] = $request->file('profile_image')->store('profiles', 'public');
+        }
+
+        if ($request->filled('password')) {
+            $validated['password'] = Hash::make($request->password);
+        } else {
+            unset($validated['password']);
         }
 
         $old = $user->only(['name', 'email', 'mobile', 'role_id', 'department_id', 'plant_id', 'status']);

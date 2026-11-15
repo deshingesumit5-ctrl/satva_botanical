@@ -1,0 +1,344 @@
+/* Sattva Botanicals - Login Page Styles */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+* {
+    box-sizing: border-box;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+body.login-page-body {
+    background-color: #e8efd8;
+    background-image: url('../images/login.bg.jpg');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    padding: 2.5rem 1rem;
+    overflow-x: hidden;
+}
+
+/* Very light overlay so card stays readable */
+body.login-page-body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.10);
+    z-index: 0;
+    pointer-events: none;
+}
+
+/* Container to hold header and card, centered vertically & horizontally */
+.login-wrapper {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 480px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Header directly on the background ABOVE the card */
+.login-header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    width: 100%;
+}
+
+.login-header-title {
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+    font-size: 2rem;
+    color: #1f2937;
+    margin-bottom: 0.35rem;
+    line-height: 1.25;
+    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.85);
+}
+
+.login-header-subtitle {
+    font-size: 1.1rem;
+    color: #4b5563;
+    margin-bottom: 0;
+    line-height: 1.4;
+    text-shadow: 0 1px 1px rgba(255, 255, 255, 0.6);
+}
+
+/* The Login Card */
+.login-card {
+    background: rgba(255, 255, 255, 0.97);
+    width: 100%;
+    max-width: 480px;
+    border-radius: 10px;
+    padding: 2rem 2.25rem;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.18);
+    border: none;
+}
+
+/* Logo */
+.login-logo-container {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.login-logo {
+    height: 80px;
+    width: auto;
+    max-width: 100%;
+    object-fit: contain;
+    display: inline-block;
+}
+
+/* Form controls */
+.login-form-label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 0.4rem;
+}
+
+.login-input {
+    width: 100%;
+    height: 42px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 0.5rem 0.875rem;
+    font-size: 0.95rem;
+    color: #1f2937;
+    background-color: #ffffff;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.login-input:focus {
+    outline: none;
+    border-color: #10b981;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25);
+}
+
+.login-input.is-invalid {
+    border-color: #dc3545;
+}
+
+.login-input.is-invalid:focus {
+    box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.25);
+}
+
+/* Password field with inside toggle button */
+.password-field-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.password-field-wrapper .login-input {
+    padding-right: 42px;
+}
+
+.password-toggle-btn {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 42px;
+    background: transparent;
+    border: none;
+    color: #6b7280;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.15rem;
+    padding: 0;
+    border-radius: 0 6px 6px 0;
+    transition: color 0.15s ease-in-out;
+    z-index: 2;
+}
+
+.password-toggle-btn:hover {
+    color: #1f2937;
+}
+
+/* Forgot password link */
+.forgot-password-link {
+    color: #4f46e5;
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-decoration: none;
+    display: inline-block;
+    transition: color 0.15s ease-in-out;
+}
+
+.forgot-password-link:hover {
+    color: #3730a3;
+    text-decoration: underline;
+}
+
+/* Checkbox */
+.login-form-check {
+    display: flex;
+    align-items: center;
+    margin-top: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.login-checkbox {
+    width: 1rem;
+    height: 1rem;
+    margin-top: 0;
+    margin-right: 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.login-checkbox:checked {
+    background-color: #1fbf8f;
+    border-color: #1fbf8f;
+}
+
+.login-checkbox:focus {
+    border-color: #10b981;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25);
+}
+
+.login-checkbox-label {
+    font-size: 0.875rem;
+    color: #4b5563;
+    cursor: pointer;
+    user-select: none;
+}
+
+/* Sign In Button */
+.btn-signin {
+    width: 100%;
+    height: 44px;
+    background-color: #1fbf8f;
+    border: 1px solid #1fbf8f;
+    border-radius: 6px;
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.05s ease;
+}
+
+.btn-signin:hover, .btn-signin:focus {
+    background-color: #17a67b;
+    border-color: #17a67b;
+    color: #ffffff;
+}
+
+.btn-signin:active {
+    transform: translateY(1px);
+}
+
+.btn-signin:disabled {
+    background-color: #17a67b;
+    border-color: #17a67b;
+    opacity: 0.85;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Error text */
+.field-error-text {
+    font-size: 0.82rem;
+    color: #dc3545;
+    margin-top: 0.35rem;
+}
+
+/* Alerts */
+.login-alert {
+    border-radius: 6px;
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    margin-bottom: 1.25rem;
+}
+
+/* Square Modal for Forgot Password */
+.modal-square-content {
+    border-radius: 12px !important;
+    border: none;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    padding: 2.25rem 1.75rem;
+    text-align: center;
+}
+
+.modal-square-icon-box {
+    width: 68px;
+    height: 68px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    margin: 0 auto 1.25rem;
+}
+
+.modal-square-title {
+    font-weight: 700;
+    font-size: 1.3rem;
+    color: #1f2937;
+    margin-bottom: 0.5rem;
+}
+
+.modal-square-subtitle {
+    font-size: 0.95rem;
+    color: #4b5563;
+    line-height: 1.5;
+    margin-bottom: 1.5rem;
+}
+
+/* Responsive Rules */
+@media (max-width: 767.98px) {
+    body.login-page-body {
+        background-position: 70% center;
+        padding: 2rem 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    body.login-page-body {
+        padding: 1.5rem 0;
+    }
+
+    .login-wrapper {
+        padding: 0 16px;
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .login-card {
+        padding: 1.5rem;
+        border-radius: 10px;
+        max-width: 100%;
+    }
+
+    .login-header-title {
+        font-size: 1.6rem;
+    }
+
+    .login-header-subtitle {
+        font-size: 0.98rem;
+    }
+}

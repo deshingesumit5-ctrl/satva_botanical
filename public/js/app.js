@@ -99,17 +99,55 @@ window.confirmDelete = function (formAction, recordName) {
 /**
  * Helper for Edit confirmation
  */
-window.confirmEdit = function (formId, recordName) {
+window.confirmEdit = function (firstArg, secondArg) {
+    let targetForm = null;
+    let title = 'Do you want to update this?';
+    let subTitle = 'Please confirm to save the changes.';
+
+    // Case 1: second argument is an HTML form element (e.g., this.closest('form'))
+    if (secondArg && typeof secondArg === 'object' && (secondArg instanceof HTMLFormElement || secondArg.tagName === 'FORM')) {
+        targetForm = secondArg;
+        if (typeof firstArg === 'string' && firstArg.trim() !== '') {
+            title = firstArg;
+        }
+    }
+    // Case 2: first argument is an HTML form element
+    else if (firstArg && typeof firstArg === 'object' && (firstArg instanceof HTMLFormElement || firstArg.tagName === 'FORM')) {
+        targetForm = firstArg;
+        if (typeof secondArg === 'string' && secondArg.trim() !== '') {
+            subTitle = 'Changes will be saved for: ' + secondArg;
+        }
+    }
+    // Case 3: first argument is an ID string or message string
+    else if (typeof firstArg === 'string') {
+        const foundEl = document.getElementById(firstArg);
+        if (foundEl && foundEl.tagName === 'FORM') {
+            targetForm = foundEl;
+        }
+        if (typeof secondArg === 'string' && secondArg.trim() !== '') {
+            subTitle = 'Changes will be saved for: ' + secondArg;
+        } else if (secondArg && typeof secondArg === 'object' && secondArg.tagName === 'FORM') {
+            targetForm = secondArg;
+            title = firstArg;
+        }
+    }
+
     window.openConfirmModal({
-        title: 'Do you want to update this?',
-        subTitle: 'Changes will be saved for: ' + (recordName || 'this record'),
+        title: title,
+        subTitle: subTitle,
         iconHtml: '<i class="bi bi-pencil-square"></i>',
         iconBoxClass: 'bg-primary-subtle text-success',
         confirmText: 'Yes, Update',
         confirmBtnClass: 'btn-success rounded-pill',
         reasonRequired: false,
         onConfirm: function () {
-            document.getElementById(formId).submit();
+            if (targetForm && typeof targetForm.submit === 'function') {
+                targetForm.submit();
+            } else if (typeof firstArg === 'string' && document.getElementById(firstArg)) {
+                document.getElementById(firstArg).submit();
+            } else {
+                console.error('Target form not found for confirmEdit:', firstArg, secondArg);
+            }
         }
     });
 };
