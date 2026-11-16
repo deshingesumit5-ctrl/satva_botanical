@@ -62,7 +62,7 @@
                 <a href="{{ route('recipe.builder.step', ['recipe' => $recipe->id, 'step' => 7]) }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i> Back to QC</a>
                 <div class="d-flex gap-2">
                     @if($version->status === 'Draft' && empty($validationErrors))
-                        <form action="{{ route('recipe.recipes.submit', $recipe) }}" method="POST" class="d-inline">
+                        <form action="{{ route('recipe.submit', $recipe) }}" method="POST" class="d-inline">
                             @csrf
                             <button type="button" class="btn btn-warning" onclick="confirmAction('Submit this recipe version for QA / Production Manager approval?', this.closest('form'))">
                                 <i class="bi bi-send me-1"></i> Submit for Approval
@@ -71,7 +71,7 @@
                     @endif
 
                     @if(in_array($version->status, ['Draft', 'Pending Approval']) && empty($validationErrors))
-                        <form action="{{ route('recipe.recipes.approve', $recipe) }}" method="POST" class="d-inline">
+                        <form action="{{ route('recipe.approve', $recipe) }}" method="POST" class="d-inline">
                             @csrf
                             <button type="button" class="btn btn-info text-white" onclick="confirmAction('Approve this recipe specification?', this.closest('form'))">
                                 <i class="bi bi-check2-circle me-1"></i> Approve Version
@@ -80,7 +80,7 @@
                     @endif
 
                     @if($version->status !== 'Active' && empty($validationErrors))
-                        <form action="{{ route('recipe.recipes.activate', $recipe) }}" method="POST" class="d-inline">
+                        <form action="{{ route('recipe.activate', $recipe) }}" method="POST" class="d-inline">
                             @csrf
                             <button type="button" class="btn btn-primary-sattva" onclick="confirmAction('Activate this version? This will set it as the live recipe for production batch issuance and archive previous versions.', this.closest('form'))">
                                 <i class="bi bi-shield-check me-1"></i> Activate & Lock Version

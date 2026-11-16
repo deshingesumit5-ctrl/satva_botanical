@@ -301,6 +301,7 @@ Route::middleware('auth')->group(function () {
         // Stage Execution Flow
         Route::get('batches/{batch}/execute', [ProductionExecutionController::class, 'show'])->name('batches.execute');
         Route::get('batches/{batch}/execution', [ProductionExecutionController::class, 'show'])->name('execution.show');
+        Route::get('batches/{batch}/execution/stage/{stage_execution_id}', [ProductionExecutionController::class, 'show'])->name('execution.stage');
         Route::post('batches/{batch}/execute/stage/{stageExecution}', [ProductionExecutionController::class, 'saveStage'])->name('batches.execute.stage');
         Route::post('batches/{batch}/execute/stage/{stageExecution}/save', [ProductionExecutionController::class, 'saveStage'])->name('execution.save-stage');
         Route::post('batches/{batch}/execute/stage/{stageExecution}/start', [ProductionExecutionController::class, 'startStage'])->name('execution.start-stage');
@@ -332,6 +333,7 @@ Route::middleware('auth')->group(function () {
         Route::get('pending', [QcController::class, 'pending'])->name('pending');
         Route::get('history', [QcController::class, 'history'])->name('history');
         Route::get('{qcRequest}', [QcController::class, 'show'])->name('show');
+        Route::get('{qcRequest}/review', [QcController::class, 'show'])->name('review');
         Route::post('{qcRequest}/results', [QcController::class, 'saveResults'])->name('save-results');
         Route::post('{qcRequest}/approve', [QcController::class, 'approve'])->name('approve');
         Route::post('{qcRequest}/reject', [QcController::class, 'reject'])->name('reject');

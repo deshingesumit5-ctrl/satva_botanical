@@ -16,11 +16,11 @@ class SupplierController extends Controller
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('code', 'like', "%{$search}%")
-                  ->orWhere('contact_person', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('mobile', 'like', "%{$search}%")
-                  ->orWhere('gstin', 'like', "%{$search}%");
+                    ->orWhere('code', 'like', "%{$search}%")
+                    ->orWhere('contact_person', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('mobile', 'like', "%{$search}%")
+                    ->orWhere('gstin', 'like', "%{$search}%");
             });
         }
 
@@ -41,6 +41,16 @@ class SupplierController extends Controller
 
     public function store(Request $request)
     {
+        if ($request->has('supplier_code') && !$request->has('code')) {
+            $request->merge(['code' => $request->input('supplier_code')]);
+        }
+        if ($request->has('address_line') && !$request->has('address')) {
+            $request->merge(['address' => $request->input('address_line')]);
+        }
+        if ($request->has('payment_terms_days') && !$request->has('payment_terms')) {
+            $request->merge(['payment_terms' => $request->input('payment_terms_days')]);
+        }
+
         $validated = $request->validate([
             'code' => 'required|string|max:30|unique:suppliers,code',
             'name' => 'required|string|max:150',
@@ -74,6 +84,13 @@ class SupplierController extends Controller
 
     public function update(Request $request, Supplier $supplier)
     {
+        if ($request->has('address_line') && !$request->has('address')) {
+            $request->merge(['address' => $request->input('address_line')]);
+        }
+        if ($request->has('payment_terms_days') && !$request->has('payment_terms')) {
+            $request->merge(['payment_terms' => $request->input('payment_terms_days')]);
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:150',
             'contact_person' => 'nullable|string|max:100',
@@ -97,14 +114,18 @@ class SupplierController extends Controller
     public function destroy(Supplier $supplier)
     {
         if ($supplier->purchaseOrders()->exists() || $supplier->grns()->exists()) {
-            return back()->with('error', "Cannot delete supplier '{$supplier->name}' because POs or GRNs are linked to this supplier. You can deactivate it instead.");
+            return back()->with('error', "This record is already used and cannot be deleted. You can deactivate it.");
         }
 
-        $old = $supplier->toArray();
-        $supplier->delete();
-        AuditService::log('masters', $supplier->code, 'delete', $old, null, 'Deleted supplier');
+        try {
+            $old = $supplier->toArray();
+            $supplier->delete();
+            AuditService::log('masters', $supplier->code, 'delete', $old, null, 'Deleted supplier');
 
-        return redirect()->route('masters.suppliers.index')->with('success', "Supplier deleted successfully.");
+            return redirect()->route('masters.suppliers.index')->with('success', "Supplier deleted successfully.");
+        } catch (\Illuminate\Database\QueryException $e) {
+            return back()->with('error', "This record is already used and cannot be deleted. You can deactivate it.");
+        }
     }
 
     public function toggleStatus(Supplier $supplier)

@@ -64,6 +64,10 @@ class ActivityController extends Controller
 
     public function update(Request $request, Activity $activity)
     {
+        if (!$request->filled('duration_uom')) {
+            $request->merge(['duration_uom' => $activity->duration_uom ?? 'Minutes']);
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:100',
             'activity_type' => 'nullable|string|max:50',
@@ -88,14 +92,18 @@ class ActivityController extends Controller
     public function destroy(Activity $activity)
     {
         if ($activity->recipeStageActivities()->exists()) {
-            return back()->with('error', "Cannot delete activity '{$activity->name}' as it is mapped in recipe stages. You can deactivate it instead.");
+            return back()->with('error', "This record is already used and cannot be deleted. You can deactivate it.");
         }
 
-        $old = $activity->toArray();
-        $activity->delete();
-        AuditService::log('masters', $activity->code, 'delete', $old, null, 'Deleted activity');
+        try {
+            $old = $activity->toArray();
+            $activity->delete();
+            AuditService::log('masters', $activity->code, 'delete', $old, null, 'Deleted activity');
 
-        return redirect()->route('masters.activities.index')->with('success', "Activity deleted successfully.");
+            return redirect()->route('masters.activities.index')->with('success', "Activity deleted successfully.");
+        } catch (\Illuminate\Database\QueryException $e) {
+            return back()->with('error', "This record is already used and cannot be deleted. You can deactivate it.");
+        }
     }
 
     public function toggleStatus(Activity $activity)

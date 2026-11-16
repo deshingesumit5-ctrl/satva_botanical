@@ -14,6 +14,8 @@
         <div class="card-sattva-body p-4">
             <form action="{{ route('purchase.grn.store-from-po', $order) }}" method="POST">
                 @csrf
+                <input type="hidden" name="purchase_order_id" value="{{ $order->id }}">
+                <input type="hidden" name="supplier_id" value="{{ $order->supplier_id }}">
                 <div class="row g-3 mb-4">
                     <div class="col-md-4">
                         <label class="form-label required">Destination Quarantine Warehouse</label>

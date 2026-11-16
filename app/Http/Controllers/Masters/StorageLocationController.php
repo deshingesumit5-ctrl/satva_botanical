@@ -17,9 +17,9 @@ class StorageLocationController extends Controller
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('location_code', 'like', "%{$search}%")
-                  ->orWhere('rack_no', 'like', "%{$search}%")
-                  ->orWhere('bin_no', 'like', "%{$search}%");
+                    ->orWhere('location_code', 'like', "%{$search}%")
+                    ->orWhere('rack_no', 'like', "%{$search}%")
+                    ->orWhere('bin_no', 'like', "%{$search}%");
             });
         }
 
@@ -67,6 +67,10 @@ class StorageLocationController extends Controller
 
     public function update(Request $request, StorageLocation $location)
     {
+        if ($request->has('zone') && !$request->has('rack_no')) {
+            $request->merge(['rack_no' => $request->input('zone')]);
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:100',
             'warehouse_id' => 'required|exists:warehouses,id',
@@ -86,14 +90,18 @@ class StorageLocationController extends Controller
     public function destroy(StorageLocation $location)
     {
         if ($location->stockLots()->exists()) {
-            return back()->with('error', "Cannot delete storage location '{$location->name}' because stock lots are assigned to it. You can deactivate it instead.");
+            return back()->with('error', "This record is already used and cannot be deleted. You can deactivate it.");
         }
 
-        $old = $location->toArray();
-        $location->delete();
-        AuditService::log('masters', $location->location_code, 'delete', $old, null, 'Deleted storage location');
+        try {
+            $old = $location->toArray();
+            $location->delete();
+            AuditService::log('masters', $location->location_code, 'delete', $old, null, 'Deleted storage location');
 
-        return redirect()->route('masters.locations.index')->with('success', "Storage location deleted successfully.");
+            return redirect()->route('masters.locations.index')->with('success', "Storage Location deleted successfully.");
+        } catch (\Illuminate\Database\QueryException $e) {
+            return back()->with('error', "This record is already used and cannot be deleted. You can deactivate it.");
+        }
     }
 
     public function toggleStatus(StorageLocation $location)

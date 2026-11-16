@@ -79,14 +79,18 @@ class PlantController extends Controller
     {
         // Check FK usage in departments, warehouses, users
         if ($plant->departments()->exists() || $plant->warehouses()->exists() || $plant->users()->exists()) {
-            return back()->with('error', "Cannot delete plant '{$plant->name}' as it is in use by departments, warehouses or users. You can deactivate it instead.");
+            return back()->with('error', "This record is already used and cannot be deleted. You can deactivate it.");
         }
 
-        $old = $plant->toArray();
-        $plant->delete();
-        AuditService::log('masters', $plant->code, 'delete', $old, null, 'Deleted plant');
+        try {
+            $old = $plant->toArray();
+            $plant->delete();
+            AuditService::log('masters', $plant->code, 'delete', $old, null, 'Deleted plant');
 
-        return redirect()->route('masters.plants.index')->with('success', "Plant deleted successfully.");
+            return redirect()->route('masters.plants.index')->with('success', "Plant deleted successfully.");
+        } catch (\Illuminate\Database\QueryException $e) {
+            return back()->with('error', "This record is already used and cannot be deleted. You can deactivate it.");
+        }
     }
 
     public function toggleStatus(Plant $plant)

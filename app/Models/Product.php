@@ -39,4 +39,14 @@ class Product extends Model
     {
         return $this->hasMany(Recipe::class);
     }
+
+    public function batches()
+    {
+        return $this->hasMany(Batch::class);
+    }
+
+    public function salesOrderItems()
+    {
+        return $this->hasMany(SalesOrderItem::class);
+    }
 }

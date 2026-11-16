@@ -34,9 +34,9 @@ class PurchaseOrderController extends Controller
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('po_number', 'like', "%{$search}%")
-                  ->orWhereHas('supplier', function ($sq) use ($search) {
-                      $sq->where('name', 'like', "%{$search}%");
-                  });
+                    ->orWhereHas('supplier', function ($sq) use ($search) {
+                        $sq->where('name', 'like', "%{$search}%");
+                    });
             });
         }
 
@@ -73,17 +73,21 @@ class PurchaseOrderController extends Controller
     {
         $validated = $request->validate([
             'supplier_id' => 'required|exists:suppliers,id',
-            'plant_id' => 'required|exists:plants,id',
+            'plant_id' => 'nullable|exists:plants,id',
+            'pr_id' => 'nullable|exists:purchase_requisitions,id',
             'purchase_requisition_id' => 'nullable|exists:purchase_requisitions,id',
-            'order_date' => 'required|date',
-            'delivery_date' => 'nullable|date|after_or_equal:order_date',
+            'order_date' => 'nullable|date',
+            'expected_delivery_date' => 'nullable|date',
+            'delivery_date' => 'nullable|date',
             'payment_terms' => 'nullable|string|max:100',
+            'delivery_terms' => 'nullable|string',
             'billing_address' => 'nullable|string',
             'shipping_address' => 'nullable|string',
             'notes' => 'nullable|string',
             'items' => 'required|array|min:1',
             'items.*.material_id' => 'required|exists:materials,id',
-            'items.*.ordered_qty' => 'required|numeric|min:0.001',
+            'items.*.quantity' => 'nullable|numeric|min:0.001',
+            'items.*.ordered_qty' => 'nullable|numeric|min:0.001',
             'items.*.uom_id' => 'required|exists:uoms,id',
             'items.*.unit_price' => 'required|numeric|min:0',
             'items.*.tax_percent' => 'nullable|numeric|min:0|max:100',
@@ -96,46 +100,64 @@ class PurchaseOrderController extends Controller
             $taxTotal = 0;
 
             foreach ($validated['items'] as $item) {
-                $lineSub = $item['ordered_qty'] * $item['unit_price'];
-                $taxRate = $item['tax_percent'] ?? 0;
-                $lineTax = $lineSub * ($taxRate / 100);
+                $qty = (float) ($item['quantity'] ?? $item['ordered_qty'] ?? 0);
+                $lineSub = round($qty * (float) $item['unit_price'], 2);
+                $taxRate = (float) ($item['tax_percent'] ?? 0);
+                $lineTax = round($lineSub * ($taxRate / 100), 2);
 
                 $subtotal += $lineSub;
                 $taxTotal += $lineTax;
             }
 
             $grandTotal = $subtotal + $taxTotal;
+            $prId = $validated['pr_id'] ?? $validated['purchase_requisition_id'] ?? null;
+            $poDate = $validated['order_date'] ?? now()->toDateString();
+            $expectedDelivery = $validated['expected_delivery_date'] ?? $validated['delivery_date'] ?? null;
+            $terms = $validated['delivery_terms'] ?? $validated['notes'] ?? null;
+            $plant = !empty($validated['plant_id']) ? Plant::find($validated['plant_id']) : null;
+            $deliveryAddress = $validated['shipping_address'] ?? ($plant ? $plant->name : null);
+
+            $cgst = round($taxTotal / 2, 2);
+            $sgst = round($taxTotal - $cgst, 2);
 
             $order = PurchaseOrder::create([
                 'po_number' => $poNumber,
+                'purchase_requisition_id' => $prId,
                 'supplier_id' => $validated['supplier_id'],
-                'plant_id' => $validated['plant_id'],
-                'purchase_requisition_id' => $validated['purchase_requisition_id'] ?? null,
-                'po_date' => $validated['order_date'],
-                'expected_delivery_date' => $validated['delivery_date'] ?? null,
+                'po_date' => $poDate,
+                'expected_delivery_date' => $expectedDelivery,
+                'delivery_address' => $deliveryAddress,
                 'payment_terms' => $validated['payment_terms'] ?? null,
+                'terms_conditions' => $terms,
                 'subtotal' => $subtotal,
-                'tax_amount' => $taxTotal,
-                'grand_total' => $grandTotal,
+                'discount_amount' => 0,
+                'taxable_amount' => $subtotal,
+                'cgst_amount' => $cgst,
+                'sgst_amount' => $sgst,
+                'igst_amount' => 0,
+                'total_amount' => $grandTotal,
                 'status' => 'Draft',
-                'remarks' => $validated['notes'] ?? null,
-                'created_by' => Auth::id(),
             ]);
 
             foreach ($validated['items'] as $item) {
-                $lineSub = $item['ordered_qty'] * $item['unit_price'];
-                $taxRate = $item['tax_percent'] ?? 0;
-                $lineTax = $lineSub * ($taxRate / 100);
+                $qty = (float) ($item['quantity'] ?? $item['ordered_qty'] ?? 0);
+                $rate = (float) $item['unit_price'];
+                $lineSub = round($qty * $rate, 2);
+                $taxRate = (float) ($item['tax_percent'] ?? 0);
+                $lineTax = round($lineSub * ($taxRate / 100), 2);
 
                 PurchaseOrderItem::create([
                     'purchase_order_id' => $order->id,
                     'material_id' => $item['material_id'],
-                    'ordered_qty' => $item['ordered_qty'],
+                    'quantity' => $qty,
                     'received_qty' => 0,
                     'uom_id' => $item['uom_id'],
-                    'unit_price' => $item['unit_price'],
-                    'tax_percent' => $taxRate,
-                    'line_total' => $lineSub + $lineTax,
+                    'rate' => $rate,
+                    'discount_percent' => 0,
+                    'taxable_amount' => $lineSub,
+                    'gst_rate' => $taxRate,
+                    'gst_amount' => $lineTax,
+                    'total_amount' => $lineSub + $lineTax,
                 ]);
             }
 
@@ -175,14 +197,17 @@ class PurchaseOrderController extends Controller
 
         $validated = $request->validate([
             'supplier_id' => 'required|exists:suppliers,id',
-            'plant_id' => 'required|exists:plants,id',
-            'order_date' => 'required|date',
-            'delivery_date' => 'nullable|date|after_or_equal:order_date',
+            'plant_id' => 'nullable|exists:plants,id',
+            'order_date' => 'nullable|date',
+            'expected_delivery_date' => 'nullable|date',
+            'delivery_date' => 'nullable|date',
             'payment_terms' => 'nullable|string|max:100',
+            'delivery_terms' => 'nullable|string',
             'notes' => 'nullable|string',
             'items' => 'required|array|min:1',
             'items.*.material_id' => 'required|exists:materials,id',
-            'items.*.ordered_qty' => 'required|numeric|min:0.001',
+            'items.*.quantity' => 'nullable|numeric|min:0.001',
+            'items.*.ordered_qty' => 'nullable|numeric|min:0.001',
             'items.*.uom_id' => 'required|exists:uoms,id',
             'items.*.unit_price' => 'required|numeric|min:0',
             'items.*.tax_percent' => 'nullable|numeric|min:0|max:100',
@@ -193,41 +218,55 @@ class PurchaseOrderController extends Controller
             $taxTotal = 0;
 
             foreach ($validated['items'] as $item) {
-                $lineSub = $item['ordered_qty'] * $item['unit_price'];
-                $taxRate = $item['tax_percent'] ?? 0;
-                $lineTax = $lineSub * ($taxRate / 100);
+                $qty = (float) ($item['quantity'] ?? $item['ordered_qty'] ?? 0);
+                $lineSub = round($qty * (float) $item['unit_price'], 2);
+                $taxRate = (float) ($item['tax_percent'] ?? 0);
+                $lineTax = round($lineSub * ($taxRate / 100), 2);
 
                 $subtotal += $lineSub;
                 $taxTotal += $lineTax;
             }
 
+            $expectedDelivery = $validated['expected_delivery_date'] ?? $validated['delivery_date'] ?? $order->expected_delivery_date;
+            $terms = $validated['delivery_terms'] ?? $validated['notes'] ?? null;
+            $plant = !empty($validated['plant_id']) ? Plant::find($validated['plant_id']) : null;
+            $cgst = round($taxTotal / 2, 2);
+            $sgst = round($taxTotal - $cgst, 2);
+
             $order->update([
                 'supplier_id' => $validated['supplier_id'],
-                'plant_id' => $validated['plant_id'],
-                'po_date' => $validated['order_date'],
-                'expected_delivery_date' => $validated['delivery_date'] ?? null,
+                'po_date' => $validated['order_date'] ?? $order->po_date ?? now()->toDateString(),
+                'expected_delivery_date' => $expectedDelivery,
+                'delivery_address' => $plant ? $plant->name : $order->delivery_address,
                 'payment_terms' => $validated['payment_terms'] ?? null,
+                'terms_conditions' => $terms,
                 'subtotal' => $subtotal,
-                'tax_amount' => $taxTotal,
-                'grand_total' => $subtotal + $taxTotal,
-                'remarks' => $validated['notes'] ?? null,
+                'taxable_amount' => $subtotal,
+                'cgst_amount' => $cgst,
+                'sgst_amount' => $sgst,
+                'total_amount' => $subtotal + $taxTotal,
             ]);
 
             $order->items()->delete();
             foreach ($validated['items'] as $item) {
-                $lineSub = $item['ordered_qty'] * $item['unit_price'];
-                $taxRate = $item['tax_percent'] ?? 0;
-                $lineTax = $lineSub * ($taxRate / 100);
+                $qty = (float) ($item['quantity'] ?? $item['ordered_qty'] ?? 0);
+                $rate = (float) $item['unit_price'];
+                $lineSub = round($qty * $rate, 2);
+                $taxRate = (float) ($item['tax_percent'] ?? 0);
+                $lineTax = round($lineSub * ($taxRate / 100), 2);
 
                 PurchaseOrderItem::create([
                     'purchase_order_id' => $order->id,
                     'material_id' => $item['material_id'],
-                    'ordered_qty' => $item['ordered_qty'],
+                    'quantity' => $qty,
                     'received_qty' => 0,
                     'uom_id' => $item['uom_id'],
-                    'unit_price' => $item['unit_price'],
-                    'tax_percent' => $taxRate,
-                    'line_total' => $lineSub + $lineTax,
+                    'rate' => $rate,
+                    'discount_percent' => 0,
+                    'taxable_amount' => $lineSub,
+                    'gst_rate' => $taxRate,
+                    'gst_amount' => $lineTax,
+                    'total_amount' => $lineSub + $lineTax,
                 ]);
             }
 
@@ -243,13 +282,17 @@ class PurchaseOrderController extends Controller
             return back()->with('error', 'Only Draft orders can be deleted.');
         }
 
-        $code = $order->po_number;
-        $order->items()->delete();
-        $order->delete();
+        try {
+            $code = $order->po_number;
+            $order->items()->delete();
+            $order->delete();
 
-        AuditService::log('purchase', $code, 'delete_po', null, null, 'Deleted purchase order');
+            AuditService::log('purchase', $code, 'delete_po', null, null, 'Deleted purchase order');
 
-        return redirect()->route('purchase.orders.index')->with('success', 'Purchase Order deleted.');
+            return redirect()->route('purchase.orders.index')->with('success', 'Purchase Order deleted.');
+        } catch (\Illuminate\Database\QueryException $e) {
+            return back()->with('error', 'This record is already used and cannot be deleted. You can deactivate it.');
+        }
     }
 
     public function approve(PurchaseOrder $order)

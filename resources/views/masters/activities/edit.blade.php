@@ -31,6 +31,19 @@
                         </select>
                     </div>
                 </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Default Duration</label>
+                        <input type="number" name="default_duration" class="form-control" value="{{ old('default_duration', $activity->default_duration) }}" min="1">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label required">Duration UOM</label>
+                        <select name="duration_uom" class="form-select" required>
+                            <option value="Minutes" {{ ($activity->duration_uom === 'Minutes') ? 'selected' : '' }}>Minutes</option>
+                            <option value="Hours" {{ ($activity->duration_uom === 'Hours') ? 'selected' : '' }}>Hours</option>
+                        </select>
+                    </div>
+                </div>
                 <div class="mb-4">
                     <label class="form-label">Description</label>
                     <textarea name="description" class="form-control" rows="3">{{ old('description', $activity->description) }}</textarea>

@@ -6,7 +6,32 @@ use Illuminate\Database\Eloquent\Model;
 
 class Role extends Model
 {
-    protected $guarded = [];
+    protected $fillable = [
+        'role_code',
+        'role_name',
+        'description',
+        'status',
+    ];
+
+    public function getNameAttribute(): ?string
+    {
+        return $this->attributes['role_name'] ?? null;
+    }
+
+    public function setNameAttribute($value): void
+    {
+        $this->attributes['role_name'] = $value;
+    }
+
+    public function getCodeAttribute(): ?string
+    {
+        return $this->attributes['role_code'] ?? null;
+    }
+
+    public function setCodeAttribute($value): void
+    {
+        $this->attributes['role_code'] = $value;
+    }
 
     public function permissions()
     {

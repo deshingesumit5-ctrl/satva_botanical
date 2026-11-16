@@ -1,64 +1,67 @@
 @extends('layouts.app')
 @section('title', 'Edit Warehouse')
 @section('content')
-<div class="container-fluid px-0" style="max-width: 600px;">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h2 class="page-title">Edit Warehouse</h2>
-            <p class="page-subtitle">Update warehouse configuration.</p>
+    <div class="container-fluid px-0" style="max-width: 600px;">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2 class="page-title">Edit Warehouse</h2>
+                <p class="page-subtitle">Update warehouse configuration.</p>
+            </div>
+            <a href="{{ route('masters.warehouses.index') }}" class="btn btn-outline-secondary"><i
+                    class="bi bi-arrow-left me-1"></i> Back</a>
         </div>
-        <a href="{{ route('masters.warehouses.index') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i> Back</a>
-    </div>
 
-    <div class="card card-sattva">
-        <div class="card-sattva-body p-4">
-            <form action="{{ route('masters.warehouses.update', $warehouse) }}" method="POST">
-                @csrf @method('PUT')
-                <div class="mb-3">
-                    <label class="form-label required">Warehouse Name</label>
-                    <input type="text" name="name" class="form-control" value="{{ old('name', $warehouse->name) }}" required>
-                </div>
-                <div class="row g-2 mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label">Code</label>
-                        <input type="text" class="form-control" value="{{ $warehouse->code }}" disabled>
+        <div class="card card-sattva">
+            <div class="card-sattva-body p-4">
+                <form action="{{ route('masters.warehouses.update', $warehouse) }}" method="POST">
+                    @csrf @method('PUT')
+                    <div class="mb-3">
+                        <label class="form-label required">Warehouse Name</label>
+                        <input type="text" name="name" class="form-control" value="{{ old('name', $warehouse->name) }}"
+                            required>
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label required">Warehouse Type</label>
-                        <select name="warehouse_type" class="form-select" required>
-                            <option value="Raw Material" {{ $warehouse->warehouse_type === 'Raw Material' ? 'selected' : '' }}>Raw Material</option>
-                            <option value="Finished Goods" {{ $warehouse->warehouse_type === 'Finished Goods' ? 'selected' : '' }}>Finished Goods</option>
-                            <option value="Packaging" {{ $warehouse->warehouse_type === 'Packaging' ? 'selected' : '' }}>Packaging</option>
-                            <option value="Solvent / Flammable" {{ $warehouse->warehouse_type === 'Solvent / Flammable' ? 'selected' : '' }}>Solvent / Flammable</option>
-                            <option value="Quarantine" {{ $warehouse->warehouse_type === 'Quarantine' ? 'selected' : '' }}>Quarantine</option>
-                            <option value="General" {{ $warehouse->warehouse_type === 'General' ? 'selected' : '' }}>General</option>
-                        </select>
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Code</label>
+                            <input type="text" class="form-control" value="{{ $warehouse->code }}" disabled>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label required">Warehouse Type</label>
+                            <select name="type" class="form-select" required>
+                                @foreach(['Raw Material', 'Chemical', 'WIP', 'Finished Goods', 'Recovery', 'Waste', 'Rejected'] as $t)
+                                    <option value="{{ $t }}" {{ ($warehouse->type ?? $warehouse->warehouse_type) === $t ? 'selected' : '' }}>{{ $t }}</option>
+                                @endforeach
+                            </select>
+                        </div>
                     </div>
-                </div>
-                <div class="row g-2 mb-4">
-                    <div class="col-md-6">
-                        <label class="form-label">Plant</label>
-                        <select name="plant_id" class="form-select">
-                            <option value="">None</option>
-                            @foreach(\App\Models\Plant::where('status', 'Active')->get() as $p)
-                                <option value="{{ $p->id }}" {{ $warehouse->plant_id == $p->id ? 'selected' : '' }}>{{ $p->name }}</option>
-                            @endforeach
-                        </select>
+                    <div class="row g-2 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label">Plant</label>
+                            <select name="plant_id" class="form-select">
+                                <option value="">None</option>
+                                @foreach(\App\Models\Plant::where('status', 'Active')->get() as $p)
+                                    <option value="{{ $p->id }}" {{ $warehouse->plant_id == $p->id ? 'selected' : '' }}>
+                                        {{ $p->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Status</label>
+                            <select name="status" class="form-select">
+                                <option value="Active" {{ $warehouse->status === 'Active' ? 'selected' : '' }}>Active</option>
+                                <option value="Inactive" {{ $warehouse->status === 'Inactive' ? 'selected' : '' }}>Inactive
+                                </option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Status</label>
-                        <select name="status" class="form-select">
-                            <option value="Active" {{ $warehouse->status === 'Active' ? 'selected' : '' }}>Active</option>
-                            <option value="Inactive" {{ $warehouse->status === 'Inactive' ? 'selected' : '' }}>Inactive</option>
-                        </select>
+                    <div class="d-flex justify-content-end gap-2">
+                        <a href="{{ route('masters.warehouses.index') }}" class="btn btn-light">Cancel</a>
+                        <button type="button" class="btn btn-primary-sattva"
+                            onclick="confirmEdit('Do you want to update this Warehouse?', this.closest('form'))">Save
+                            Changes</button>
                     </div>
-                </div>
-                <div class="d-flex justify-content-end gap-2">
-                    <a href="{{ route('masters.warehouses.index') }}" class="btn btn-light">Cancel</a>
-                    <button type="button" class="btn btn-primary-sattva" onclick="confirmEdit('Do you want to update this Warehouse?', this.closest('form'))">Save Changes</button>
-                </div>
-            </form>
+                </form>
+            </div>
         </div>
     </div>
-</div>
 @endsection

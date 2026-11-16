@@ -69,4 +69,16 @@ class User extends Authenticatable
     {
         return $this->status === 'Active';
     }
+
+    public function getEmployeeCodeAttribute()
+    {
+        return $this->attributes['user_id'] ?? null;
+    }
+
+    public function setEmployeeCodeAttribute($value)
+    {
+        if (!empty($value)) {
+            $this->attributes['user_id'] = $value;
+        }
+    }
 }

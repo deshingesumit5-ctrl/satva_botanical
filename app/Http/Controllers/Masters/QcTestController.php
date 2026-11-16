@@ -16,9 +16,9 @@ class QcTestController extends Controller
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('test_name', 'like', "%{$search}%")
-                  ->orWhere('test_code', 'like', "%{$search}%")
-                  ->orWhere('test_category', 'like', "%{$search}%")
-                  ->orWhere('test_method', 'like', "%{$search}%");
+                    ->orWhere('test_code', 'like', "%{$search}%")
+                    ->orWhere('test_category', 'like', "%{$search}%")
+                    ->orWhere('test_method', 'like', "%{$search}%");
             });
         }
 
@@ -38,6 +38,19 @@ class QcTestController extends Controller
 
     public function store(Request $request)
     {
+        if ($request->has('name') && !$request->has('test_name')) {
+            $request->merge(['test_name' => $request->name]);
+        }
+        if ($request->has('code') && !$request->has('test_code')) {
+            $request->merge(['test_code' => $request->code]);
+        }
+        if ($request->has('test_type') && !$request->has('test_category')) {
+            $request->merge(['test_category' => $request->test_type]);
+        }
+        if (!$request->filled('result_type')) {
+            $request->merge(['result_type' => 'Numeric']);
+        }
+
         $validated = $request->validate([
             'test_code' => 'required|string|max:30|unique:qc_tests,test_code',
             'test_name' => 'required|string|max:100',
@@ -65,6 +78,16 @@ class QcTestController extends Controller
 
     public function update(Request $request, QcTest $qcTest)
     {
+        if ($request->has('name') && !$request->has('test_name')) {
+            $request->merge(['test_name' => $request->name]);
+        }
+        if ($request->has('test_type') && !$request->has('test_category')) {
+            $request->merge(['test_category' => $request->test_type]);
+        }
+        if (!$request->filled('result_type')) {
+            $request->merge(['result_type' => $qcTest->result_type ?? 'Numeric']);
+        }
+
         $validated = $request->validate([
             'test_name' => 'required|string|max:100',
             'test_category' => 'nullable|string|max:50',
@@ -85,14 +108,18 @@ class QcTestController extends Controller
     public function destroy(QcTest $qcTest)
     {
         if ($qcTest->recipeQcTests()->exists()) {
-            return back()->with('error', "Cannot delete QC test '{$qcTest->test_name}' as it is mapped in recipe stages. You can deactivate it instead.");
+            return back()->with('error', "This record is already used and cannot be deleted. You can deactivate it.");
         }
 
-        $old = $qcTest->toArray();
-        $qcTest->delete();
-        AuditService::log('masters', $qcTest->test_code, 'delete', $old, null, 'Deleted QC test');
+        try {
+            $old = $qcTest->toArray();
+            $qcTest->delete();
+            AuditService::log('masters', $qcTest->test_code, 'delete', $old, null, 'Deleted QC test');
 
-        return redirect()->route('masters.qc-tests.index')->with('success', "QC test deleted successfully.");
+            return redirect()->route('masters.qc-tests.index')->with('success', "QC test deleted successfully.");
+        } catch (\Illuminate\Database\QueryException $e) {
+            return back()->with('error', "This record is already used and cannot be deleted. You can deactivate it.");
+        }
     }
 
     public function toggleStatus(QcTest $qcTest)

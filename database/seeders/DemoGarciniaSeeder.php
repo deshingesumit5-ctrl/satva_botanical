@@ -289,10 +289,41 @@ class DemoGarciniaSeeder extends Seeder
                     ['recipe_stage_id' => $recipeStage->id, 'material_id' => $solvent->id, 'direction' => 'input'],
                     ['standard_qty' => 3000.0, 'uom_id' => $ltr->id, 'is_mandatory' => true]
                 );
-                // Parameter: temp
+                // Input water
+                RecipeMaterial::updateOrCreate(
+                    ['recipe_stage_id' => $recipeStage->id, 'material_id' => $deminWater->id, 'direction' => 'input'],
+                    ['standard_qty' => 500.0, 'uom_id' => $ltr->id, 'is_mandatory' => false]
+                );
+                // Output intermediate extract
+                RecipeMaterial::updateOrCreate(
+                    ['recipe_stage_id' => $recipeStage->id, 'direction' => 'output', 'material_category' => 'WIP'],
+                    ['standard_qty' => 2800.0, 'uom_id' => $ltr->id, 'output_type' => 'WIP']
+                );
+                // Parameter: temp & pH
                 RecipeParameter::updateOrCreate(
                     ['recipe_stage_id' => $recipeStage->id, 'parameter_id' => $paramTemp->id],
-                    ['target_value' => '65', 'min_value' => '60', 'max_value' => '70', 'is_mandatory' => true]
+                    ['target_value' => '65', 'min_value' => '60', 'max_value' => '70', 'is_mandatory' => true, 'display_sequence' => 1]
+                );
+                RecipeParameter::updateOrCreate(
+                    ['recipe_stage_id' => $recipeStage->id, 'parameter_id' => $paramPH->id],
+                    ['target_value' => '4.5', 'min_value' => '4.0', 'max_value' => '5.5', 'is_mandatory' => true, 'display_sequence' => 2]
+                );
+                // QC test for stage 3
+                RecipeQcTest::updateOrCreate(
+                    ['recipe_stage_id' => $recipeStage->id, 'qc_test_id' => $qcAssay->id],
+                    ['target_value' => '18.0', 'min_value' => '15.0', 'max_value' => '25.0', 'is_mandatory' => true, 'requires_approval' => true, 'blocks_next_stage' => true]
+                );
+            }
+
+            if ($s['code'] === 'STG-04') {
+                // Output spent herb
+                RecipeMaterial::updateOrCreate(
+                    ['recipe_stage_id' => $recipeStage->id, 'direction' => 'output', 'material_category' => 'Raw'],
+                    ['standard_qty' => 850.0, 'uom_id' => $kg->id, 'output_type' => 'Spent']
+                );
+                RecipeParameter::updateOrCreate(
+                    ['recipe_stage_id' => $recipeStage->id, 'parameter_id' => $paramPress->id],
+                    ['target_value' => '2.0', 'min_value' => '1.5', 'max_value' => '3.0', 'is_mandatory' => true]
                 );
             }
 
@@ -307,18 +338,55 @@ class DemoGarciniaSeeder extends Seeder
                     ['recipe_stage_id' => $recipeStage->id, 'direction' => 'output', 'material_category' => 'WIP'],
                     ['standard_qty' => 500.0, 'uom_id' => $ltr->id, 'output_type' => 'WIP']
                 );
-                // Parameter: Brix
+                // Parameter: Brix & Vacuum Pressure
                 RecipeParameter::updateOrCreate(
                     ['recipe_stage_id' => $recipeStage->id, 'parameter_id' => $paramBrix->id],
-                    ['target_value' => '35', 'min_value' => '30', 'max_value' => '40', 'is_mandatory' => true]
+                    ['target_value' => '35', 'min_value' => '30', 'max_value' => '40', 'is_mandatory' => true, 'display_sequence' => 1]
+                );
+                RecipeParameter::updateOrCreate(
+                    ['recipe_stage_id' => $recipeStage->id, 'parameter_id' => $paramPress->id],
+                    ['target_value' => '0.6', 'min_value' => '0.4', 'max_value' => '0.8', 'is_mandatory' => true, 'display_sequence' => 2]
+                );
+                // QC test for stage 5
+                RecipeQcTest::updateOrCreate(
+                    ['recipe_stage_id' => $recipeStage->id, 'qc_test_id' => $qcAssay->id],
+                    ['target_value' => '45.0', 'min_value' => '40.0', 'max_value' => '55.0', 'is_mandatory' => true, 'requires_approval' => true, 'blocks_next_stage' => true]
+                );
+            }
+
+            if ($s['code'] === 'STG-06') {
+                // Input Activated Carbon
+                RecipeMaterial::updateOrCreate(
+                    ['recipe_stage_id' => $recipeStage->id, 'material_id' => $charcoal->id, 'direction' => 'input'],
+                    ['standard_qty' => 15.0, 'uom_id' => $kg->id, 'is_mandatory' => true]
+                );
+                RecipeParameter::updateOrCreate(
+                    ['recipe_stage_id' => $recipeStage->id, 'parameter_id' => $paramTemp->id],
+                    ['target_value' => '55', 'min_value' => '50', 'max_value' => '60', 'is_mandatory' => true]
+                );
+            }
+
+            if ($s['code'] === 'STG-08') {
+                RecipeParameter::updateOrCreate(
+                    ['recipe_stage_id' => $recipeStage->id, 'parameter_id' => $paramPH->id],
+                    ['target_value' => '7.5', 'min_value' => '7.0', 'max_value' => '8.2', 'is_mandatory' => true]
                 );
             }
 
             if ($s['code'] === 'STG-10') {
-                // Parameter: moisture
+                // Parameter: moisture & temp
                 RecipeParameter::updateOrCreate(
                     ['recipe_stage_id' => $recipeStage->id, 'parameter_id' => $paramMoist->id],
-                    ['target_value' => '4.0', 'min_value' => '2.0', 'max_value' => '5.0', 'is_mandatory' => true]
+                    ['target_value' => '4.0', 'min_value' => '2.0', 'max_value' => '5.0', 'is_mandatory' => true, 'display_sequence' => 1]
+                );
+                RecipeParameter::updateOrCreate(
+                    ['recipe_stage_id' => $recipeStage->id, 'parameter_id' => $paramTemp->id],
+                    ['target_value' => '60', 'min_value' => '55', 'max_value' => '65', 'is_mandatory' => true, 'display_sequence' => 2]
+                );
+                // QC test for stage 10
+                RecipeQcTest::updateOrCreate(
+                    ['recipe_stage_id' => $recipeStage->id, 'qc_test_id' => $qcLoss->id],
+                    ['target_value' => '3.5', 'min_value' => '1.0', 'max_value' => '5.0', 'is_mandatory' => true, 'requires_approval' => true, 'blocks_next_stage' => true]
                 );
             }
 

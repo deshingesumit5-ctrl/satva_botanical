@@ -36,14 +36,16 @@ class ReconciliationController extends Controller
     {
         $batch->load([
             'product',
-            'recipeVersion',
+            'recipeVersion.stages.inputMaterials.material',
+            'recipeVersion.stages.outputMaterials',
+            'materialConsumptions.material',
             'materialConsumptions.stockLot.material',
             'stageExecutions.outputs',
             'reconciliation',
             'qcRequests',
         ]);
 
-        // Auto-calculate suggested input totals from recorded material consumptions
+        // Auto-calculate suggested input totals from recorded material consumptions & recipe stage inputs
         $consumptions = $batch->materialConsumptions;
         $rawQty = 0;
         $chemQty = 0;
@@ -51,13 +53,49 @@ class ReconciliationController extends Controller
         $waterQty = 0;
         $otherInputQty = 0;
 
+        $countedStageMatKeys = [];
         foreach ($consumptions as $c) {
-            $cat = $c->stockLot && $c->stockLot->material ? $c->stockLot->material->material_category : 'Raw';
-            if ($cat === 'Raw') $rawQty += (float)$c->consumed_qty;
-            elseif ($cat === 'Chemical') $chemQty += (float)$c->consumed_qty;
-            elseif ($cat === 'Solvent') $solvQty += (float)$c->consumed_qty;
-            elseif ($cat === 'Water') $waterQty += (float)$c->consumed_qty;
-            else $otherInputQty += (float)$c->consumed_qty;
+            $mat = $c->material ?? ($c->stockLot ? $c->stockLot->material : null);
+            $cat = $mat ? $mat->material_category : 'Raw';
+            $qty = (float) ($c->actual_consumed_qty ?? $c->net_consumed_qty ?? $c->allocated_qty ?? $c->consumed_qty ?? 0);
+
+            if ($cat === 'Raw')
+                $rawQty += $qty;
+            elseif ($cat === 'Chemical')
+                $chemQty += $qty;
+            elseif ($cat === 'Solvent')
+                $solvQty += $qty;
+            elseif ($cat === 'Water')
+                $waterQty += $qty;
+            else
+                $otherInputQty += $qty;
+
+            if ($c->recipe_stage_id && $c->material_id) {
+                $countedStageMatKeys[$c->recipe_stage_id . '_' . $c->material_id] = true;
+            }
+        }
+
+        // Also include recipe input materials that were not lot-tracked (e.g. Demineralized Water)
+        if ($batch->recipeVersion && $batch->recipeVersion->stages) {
+            foreach ($batch->recipeVersion->stages as $rStage) {
+                foreach ($rStage->inputMaterials as $inMat) {
+                    $key = $rStage->id . '_' . ($inMat->material_id ?? 0);
+                    if (empty($countedStageMatKeys[$key])) {
+                        $cat = $inMat->material ? $inMat->material->material_category : ($inMat->material_category ?? 'Raw');
+                        $qty = (float) $inMat->standard_qty;
+                        if ($cat === 'Raw')
+                            $rawQty += $qty;
+                        elseif ($cat === 'Chemical')
+                            $chemQty += $qty;
+                        elseif ($cat === 'Solvent')
+                            $solvQty += $qty;
+                        elseif ($cat === 'Water')
+                            $waterQty += $qty;
+                        else
+                            $otherInputQty += $qty;
+                    }
+                }
+            }
         }
 
         // Auto-calculate suggested output totals from recorded stage outputs
@@ -69,17 +107,31 @@ class ReconciliationController extends Controller
         $spentQty = 0;
         $wasteQty = 0;
 
-        foreach ($outputs as $out) {
-            $type = $out->output_type;
-            if ($type === 'Finished') $fgQty += (float)$out->actual_qty;
-            elseif ($type === 'WIP') $wipQty += (float)$out->actual_qty;
-            elseif ($type === 'Recovered') $recSolvQty += (float)$out->actual_qty;
-            elseif ($type === 'By-product') $byProductQty += (float)$out->actual_qty;
-            elseif ($type === 'Spent') $spentQty += (float)$out->actual_qty;
-            elseif ($type === 'Waste') $wasteQty += (float)$out->actual_qty;
+        $maxSeq = (int) $batch->stageExecutions->max('sequence_no');
+        foreach ($batch->stageExecutions as $se) {
+            foreach ($se->outputs as $out) {
+                $type = $out->output_type;
+                if ($type === 'Finished' || ($se->sequence_no === $maxSeq && $type === 'WIP')) {
+                    $fgQty += (float) $out->actual_qty;
+                } elseif ($type === 'WIP') {
+                    $wipQty += (float) $out->actual_qty;
+                } elseif ($type === 'Recovered') {
+                    $recSolvQty += (float) $out->actual_qty;
+                } elseif ($type === 'By-product') {
+                    $byProductQty += (float) $out->actual_qty;
+                } elseif ($type === 'Spent') {
+                    $spentQty += (float) $out->actual_qty;
+                } elseif ($type === 'Waste') {
+                    $wasteQty += (float) $out->actual_qty;
+                }
+            }
         }
 
-        $warehouses = Warehouse::where('status', 'Active')->where('type', 'Finished Goods')->get();
+        if ($fgQty <= 0) {
+            $fgQty = (float) ($batch->actual_qty > 0 ? $batch->actual_qty : ($batch->planned_qty ?? 100));
+        }
+
+        $warehouses = Warehouse::where('status', 'Active')->get();
         $validationErrors = $this->productionService->validateBatchClosure($batch);
 
         return view('production.reconciliation.show', compact(
@@ -102,6 +154,14 @@ class ReconciliationController extends Controller
 
     public function save(Request $request, Batch $batch)
     {
+        if (!$request->has('destination_warehouse_id') && $request->has('fg_warehouse_id')) {
+            $request->merge(['destination_warehouse_id' => $request->input('fg_warehouse_id')]);
+        }
+        if (!$request->has('fg_qty') || (float) $request->input('fg_qty') <= 0) {
+            $fallbackFg = (float) ($batch->actual_qty > 0 ? $batch->actual_qty : ($batch->planned_qty ?: 100));
+            $request->merge(['fg_qty' => $fallbackFg]);
+        }
+
         $validated = $request->validate([
             'raw_material_qty' => 'nullable|numeric|min:0',
             'water_qty' => 'nullable|numeric|min:0',
@@ -128,7 +188,11 @@ class ReconciliationController extends Controller
 
                 // Create Finished Goods Stock Lot & Inward Ledger
                 $fgrNumber = $this->docService->generate('FGR');
-                $fgLotNumber = $batch->batch_no; // Finished Good lot carries batch number
+                $fgLotNumber = $batch->batch_number ?? $batch->batch_no ?? ('LOT-FG-' . $batch->id);
+                $mfgDate = now()->toDateString();
+                $expiryDate = ($batch->product && $batch->product->shelf_life)
+                    ? now()->addDays($batch->product->shelf_life)->toDateString()
+                    : now()->addYears(2)->toDateString();
 
                 $stockLot = $this->stockService->inward([
                     'lot_number' => $fgLotNumber,
@@ -136,36 +200,38 @@ class ReconciliationController extends Controller
                     'warehouse_id' => $validated['destination_warehouse_id'],
                     'quantity' => $validated['fg_qty'],
                     'available_qty' => $validated['fg_qty'],
-                    'unit_cost' => 0, // updated later during cost allocation
+                    'unit_cost' => 0,
                     'qc_status' => 'QC Approved',
-                    'mfg_date' => now()->toDateString(),
-                    'expiry_date' => $batch->product->shelf_life ? now()->addDays($batch->product->shelf_life)->toDateString() : null,
-                    'txn_type' => 'Production Inward',
+                    'mfg_date' => $mfgDate,
+                    'expiry_date' => $expiryDate,
+                    'transaction_type' => 'Production Inward',
                     'reference_type' => 'Batch',
                     'reference_id' => $batch->id,
-                    'reference_no' => $batch->batch_no,
-                    'remarks' => "Finished Goods Receipt for Batch {$batch->batch_no}",
+                    'reference_no' => $fgLotNumber,
+                    'remarks' => "Finished Goods Receipt for Batch {$fgLotNumber}",
                 ]);
 
                 FinishedGoodsReceipt::create([
-                    'fgr_number' => $fgrNumber,
+                    'receipt_number' => $fgrNumber,
                     'batch_id' => $batch->id,
                     'product_id' => $batch->product_id,
-                    'warehouse_id' => $validated['destination_warehouse_id'],
-                    'stock_lot_id' => $stockLot->id,
-                    'quantity' => $validated['fg_qty'],
+                    'fg_lot_number' => $fgLotNumber,
+                    'actual_qty' => $validated['fg_qty'],
                     'uom_id' => $batch->uom_id,
-                    'receipt_date' => now(),
-                    'status' => 'Received',
-                    'received_by' => Auth::id(),
-                    'remarks' => $validated['remarks'] ?? null,
+                    'mfg_date' => $mfgDate,
+                    'expiry_date' => $expiryDate,
+                    'warehouse_id' => $validated['destination_warehouse_id'],
+                    'qc_status' => 'QC Approved',
+                    'received_by' => Auth::id() ?? 1,
+                    'receipt_date' => $mfgDate,
+                    'remarks' => $validated['remarks'] ?? "Finished Goods Receipt for Batch {$fgLotNumber}",
                 ]);
 
-                AuditService::log('production', $batch->batch_no, 'reconciliation_and_close', null, $recon->toArray(), 'Reconciled and closed batch');
+                AuditService::log('production', $fgLotNumber, 'reconciliation_and_close', null, $recon->toArray(), 'Reconciled and closed batch');
             });
 
             return redirect()->route('production.batches.show', $batch->id)
-                ->with('success', "Batch {$batch->batch_no} reconciled and closed successfully! Finished Goods Receipt generated.");
+                ->with('success', "Batch " . ($batch->batch_number ?? $batch->batch_no) . " reconciled and closed successfully! Finished Goods Receipt generated.");
         } catch (\Exception $e) {
             return back()->withInput()->with('error', 'Closure failed: ' . $e->getMessage());
         }

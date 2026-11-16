@@ -34,7 +34,7 @@ class BatchController extends Controller
 
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
-                $q->where('batch_no', 'like', "%{$search}%")
+                $q->where('batch_number', 'like', "%{$search}%")
                   ->orWhereHas('product', function ($pq) use ($search) {
                       $pq->where('name', 'like', "%{$search}%");
                   });
@@ -72,6 +72,16 @@ class BatchController extends Controller
 
     public function store(Request $request)
     {
+        if (!$request->has('planned_qty') && $request->has('planned_quantity')) {
+            $request->merge(['planned_qty' => $request->input('planned_quantity')]);
+        }
+        if (!$request->has('planned_start_date') && $request->has('start_date')) {
+            $request->merge(['planned_start_date' => $request->input('start_date')]);
+        }
+        if (!$request->has('planned_end_date') && $request->has('end_date')) {
+            $request->merge(['planned_end_date' => $request->input('end_date')]);
+        }
+
         $validated = $request->validate([
             'production_plan_id' => 'nullable|exists:production_plans,id',
             'product_id' => 'required|exists:products,id',
@@ -88,15 +98,16 @@ class BatchController extends Controller
         $recipe = Recipe::findOrFail($validated['recipe_id']);
         $version = $recipe->currentVersion;
 
-        if (!$version || $version->status !== 'Active') {
+        if (!$version || !in_array($version->status, ['Active', 'Approved'])) {
             return back()->withInput()->with('error', 'Cannot launch batch: The selected recipe has no Active approved version.');
         }
 
         $batchNumber = $this->docService->generate('BATCH');
 
         $batch = DB::transaction(function () use ($validated, $recipe, $version, $batchNumber) {
+            $plantId = Plant::value('id');
             $newBatch = Batch::create([
-                'batch_no' => $batchNumber,
+                'batch_number' => $batchNumber,
                 'production_plan_id' => $validated['production_plan_id'] ?? null,
                 'product_id' => $validated['product_id'],
                 'recipe_id' => $recipe->id,
@@ -104,24 +115,29 @@ class BatchController extends Controller
                 'planned_qty' => $validated['planned_qty'],
                 'actual_qty' => 0,
                 'uom_id' => $validated['uom_id'],
+                'production_date' => $validated['planned_start_date'],
                 'planned_start_date' => $validated['planned_start_date'],
-                'planned_end_date' => $validated['planned_end_date'] ?? null,
-                'supervisor_name' => $validated['supervisor_name'] ?? (Auth::user() ? Auth::user()->name : null),
+                'planned_end_date' => $validated['planned_end_date'] ?? $validated['planned_start_date'],
+                'plant_id' => $plantId,
+                'supervisor_id' => Auth::id() ?? 1,
+                'supervisor_name' => $validated['supervisor_name'] ?? (Auth::user() ? Auth::user()->name : 'Admin User'),
                 'operator_count' => $validated['operator_count'] ?? 1,
-                'status' => 'Created',
+                'status' => 'Draft',
                 'remarks' => $validated['remarks'] ?? null,
-                'created_by' => Auth::id(),
             ]);
 
             // Pre-calculate planned material requirements
             $this->productionService->generateMaterialRequirements($newBatch);
 
-            AuditService::log('production', $newBatch->batch_no, 'create_batch', null, $newBatch->toArray(), 'Created manufacturing batch');
+            // Start batch and initialize stage executions immediately
+            $this->productionService->startBatch($newBatch, Auth::id() ?? 1);
+
+            AuditService::log('production', $newBatch->batch_number, 'create_batch', null, $newBatch->toArray(), 'Created manufacturing batch');
             return $newBatch;
         });
 
         return redirect()->route('production.batches.show', $batch->id)
-            ->with('success', "Batch {$batch->batch_no} created with material requirements generated.");
+            ->with('success', "Batch {$batch->batch_number} created and started with all stages initialized.");
     }
 
     public function show(Batch $batch)

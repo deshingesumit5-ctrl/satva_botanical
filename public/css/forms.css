@@ -1,0 +1,547 @@
+/* Sattva Botanical ERP - Forms & List Pages Design System */
+/* Reference: Category Master list and modal styling */
+
+/* --- Font & Base Typography --- */
+body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+    font-size: 14px !important;
+    color: #0f172a !important;
+    background-color: #f8fafc !important;
+    overflow-x: hidden !important;
+}
+
+/* --- Page Header --- */
+.page-title, h2.page-title {
+    font-size: 32px !important;
+    font-weight: 700 !important;
+    color: #0f172a !important;
+    letter-spacing: -0.02em !important;
+    line-height: 1.25 !important;
+    margin-bottom: 4px !important;
+}
+
+.page-subtitle, p.page-subtitle {
+    color: #64748b !important;
+    font-size: 14px !important;
+    font-weight: 400 !important;
+    margin-bottom: 0 !important;
+    line-height: 1.5 !important;
+}
+
+/* --- Primary Green Action Button (+ Add New ...) --- */
+.btn-primary-sattva {
+    background-color: #059669 !important;
+    border-color: #059669 !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    border-radius: 12px !important;
+    padding: 0.55rem 1.25rem !important;
+    font-size: 14px !important;
+    height: 42px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+    transition: all 0.2s ease-in-out !important;
+}
+
+.btn-primary-sattva:hover, .btn-primary-sattva:focus {
+    background-color: #047857 !important;
+    border-color: #047857 !important;
+    color: #ffffff !important;
+}
+
+/* --- Filter Card --- */
+.card-sattva:has(input[name="search"]),
+.filter-card,
+.card-sattva.mb-4:has(form) {
+    background: #ffffff !important;
+    border-radius: 16px !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+    margin-bottom: 1.5rem !important;
+}
+
+/* Search input with inner magnifier icon */
+input[name="search"],
+.search-input {
+    height: 44px !important;
+    background-color: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 12px !important;
+    padding: 0 14px 0 40px !important;
+    color: #0f172a !important;
+    font-size: 14px !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: 14px center !important;
+    background-size: 16px 16px !important;
+}
+
+input[name="search"]::placeholder,
+.search-input::placeholder {
+    color: #94a3b8 !important;
+    opacity: 1 !important;
+}
+
+/* Dark Navy Filter Button */
+.btn-dark-filter {
+    background-color: #0f172a !important;
+    border-color: #0f172a !important;
+    border-radius: 12px !important;
+    height: 44px !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    font-size: 14px !important;
+    padding: 0 20px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: all 0.2s ease-in-out !important;
+}
+
+.btn-dark-filter:hover, .btn-dark-filter:focus {
+    background-color: #1e293b !important;
+    border-color: #1e293b !important;
+    color: #ffffff !important;
+}
+
+/* Secondary / Reset / Cancel buttons in filters or header */
+.filter-card .btn-outline-secondary,
+.card-sattva:has(input[name="search"]) .btn-outline-secondary {
+    border-radius: 12px !important;
+    height: 44px !important;
+    border: 1px solid #e2e8f0 !important;
+    color: #475569 !important;
+    background-color: #ffffff !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    padding: 0 16px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.filter-card .btn-outline-secondary:hover,
+.card-sattva:has(input[name="search"]) .btn-outline-secondary:hover {
+    background-color: #f8fafc !important;
+    color: #0f172a !important;
+    border-color: #cbd5e1 !important;
+}
+
+/* --- Form Labels --- */
+.form-label,
+label:not(.form-check-label):not(.btn):not(.input-group-text) {
+    text-transform: uppercase !important;
+    font-size: 11.5px !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.04em !important;
+    color: #475569 !important;
+    margin-bottom: 6px !important;
+    display: inline-block !important;
+}
+
+.form-label.required:not(:has(.text-danger))::after,
+label.required:not(:has(.text-danger))::after {
+    content: " *" !important;
+    color: #dc2626 !important;
+    font-weight: 700 !important;
+}
+
+.form-label .text-danger,
+label .text-danger {
+    color: #dc2626 !important;
+    font-weight: 700 !important;
+    margin-left: 2px !important;
+}
+
+/* --- Inputs, Selects & Textareas --- */
+.form-control,
+.form-select {
+    height: 44px !important;
+    background-color: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 12px !important;
+    padding: 0 14px !important;
+    color: #0f172a !important;
+    font-size: 14px !important;
+    font-family: inherit !important;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out !important;
+}
+
+textarea.form-control {
+    min-height: 90px !important;
+    height: auto !important;
+    padding: 10px 14px !important;
+    line-height: 1.5 !important;
+}
+
+.form-control::placeholder {
+    color: #94a3b8 !important;
+    opacity: 1 !important;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: #059669 !important;
+    box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15) !important;
+    background-color: #ffffff !important;
+    outline: 0 !important;
+}
+
+.form-control.is-invalid,
+.was-validated .form-control:invalid,
+.form-select.is-invalid {
+    border-color: #dc2626 !important;
+    background-color: #ffffff !important;
+}
+
+.form-control.is-invalid:focus,
+.form-select.is-invalid:focus {
+    border-color: #dc2626 !important;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15) !important;
+}
+
+.invalid-feedback,
+.field-error-text,
+.text-danger.small {
+    color: #dc2626 !important;
+    font-size: 12px !important;
+    margin-top: 4px !important;
+    font-weight: 500 !important;
+}
+
+.form-control:disabled,
+.form-control[readonly],
+.form-select:disabled {
+    background-color: #f1f5f9 !important;
+    color: #64748b !important;
+    opacity: 0.9 !important;
+    cursor: not-allowed !important;
+}
+
+/* --- Cards & Modals --- */
+.card-sattva,
+.card.card-sattva,
+.modal-content:not(.modal-square-content) {
+    background: #ffffff !important;
+    border-radius: 16px !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05) !important;
+    overflow: hidden !important;
+}
+
+.modal-content:not(.modal-square-content) {
+    border-radius: 16px !important;
+}
+
+.modal-header {
+    border-bottom: 1px solid #e2e8f0 !important;
+    padding: 1.25rem 1.5rem !important;
+    border-top-left-radius: 16px !important;
+    border-top-right-radius: 16px !important;
+    background: #ffffff !important;
+}
+
+.modal-title {
+    font-size: 18px !important;
+    font-weight: 700 !important;
+    color: #0f172a !important;
+    margin: 0 !important;
+}
+
+.modal-body {
+    padding: 1.5rem !important;
+}
+
+.modal-footer,
+.card-sattva-footer,
+.form-footer {
+    border-top: 1px solid #e2e8f0 !important;
+    padding: 1.1rem 1.5rem !important;
+    display: flex !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    gap: 0.75rem !important;
+    border-bottom-left-radius: 16px !important;
+    border-bottom-right-radius: 16px !important;
+    background: #ffffff !important;
+}
+
+/* Right-aligned footer button actions inside forms */
+form .d-flex.justify-content-end.gap-2,
+form .d-flex.justify-content-end.gap-3 {
+    border-top: 1px solid #e2e8f0 !important;
+    padding-top: 1.25rem !important;
+    margin-top: 1.5rem !important;
+    display: flex !important;
+    justify-content: flex-end !important;
+    gap: 0.75rem !important;
+}
+
+/* Cancel Button in Form / Modal Footers */
+.modal-footer .btn-secondary,
+.modal-footer .btn-light,
+form .d-flex.justify-content-end a.btn-light,
+form .d-flex.justify-content-end button.btn-light,
+form .d-flex.justify-content-end a.btn-outline-secondary,
+.btn-cancel {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 12px !important;
+    color: #475569 !important;
+    font-weight: 500 !important;
+    height: 42px !important;
+    padding: 0 20px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 14px !important;
+    text-decoration: none !important;
+    transition: all 0.15s ease-in-out !important;
+}
+
+.modal-footer .btn-secondary:hover,
+.modal-footer .btn-light:hover,
+form .d-flex.justify-content-end a.btn-light:hover,
+form .d-flex.justify-content-end button.btn-light:hover,
+form .d-flex.justify-content-end a.btn-outline-secondary:hover,
+.btn-cancel:hover {
+    background-color: #f8fafc !important;
+    color: #0f172a !important;
+    border-color: #cbd5e1 !important;
+}
+
+/* Save / Submit Button in Form / Modal Footers */
+.modal-footer .btn-primary-sattva,
+.modal-footer button[type="submit"]:not(.btn-danger),
+form .d-flex.justify-content-end button.btn-primary-sattva,
+form .d-flex.justify-content-end button[type="submit"]:not(.btn-danger),
+.btn-save {
+    background-color: #059669 !important;
+    border: 1px solid #059669 !important;
+    border-radius: 12px !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    height: 42px !important;
+    padding: 0 24px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 14px !important;
+    transition: all 0.15s ease-in-out !important;
+}
+
+.modal-footer .btn-primary-sattva:hover,
+.modal-footer button[type="submit"]:not(.btn-danger):hover,
+form .d-flex.justify-content-end button.btn-primary-sattva:hover,
+form .d-flex.justify-content-end button[type="submit"]:not(.btn-danger):hover,
+.btn-save:hover {
+    background-color: #047857 !important;
+    border-color: #047857 !important;
+    color: #ffffff !important;
+}
+
+/* --- Table Design --- */
+.table-responsive {
+    border-radius: 16px !important;
+    overflow-x: auto !important;
+}
+
+table.table {
+    margin-bottom: 0 !important;
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+    width: 100% !important;
+}
+
+table.table thead th,
+.table-sattva thead th,
+table thead.table-light th {
+    background-color: #f8fafc !important;
+    color: #64748b !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    border-top: none !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    border-left: none !important;
+    border-right: none !important;
+    padding: 13px 16px !important;
+    white-space: nowrap !important;
+}
+
+table.table tbody td,
+.table-sattva tbody td {
+    border-top: none !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+    border-left: none !important;
+    border-right: none !important;
+    padding: 14px 16px !important;
+    vertical-align: middle !important;
+    font-size: 14px !important;
+    color: #0f172a !important;
+}
+
+table.table tbody tr:last-child td {
+    border-bottom: none !important;
+}
+
+table.table tbody tr:hover,
+.table-sattva tbody tr:hover {
+    background-color: #f8fafc !important;
+}
+
+/* Serial numbers grey */
+td:first-child:not([colspan]),
+.col-serial {
+    color: #94a3b8 !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+}
+
+/* Status Pill with Coloured Dot */
+.badge-status,
+.badge-status-active,
+.badge-active {
+    background-color: #ecfdf5 !important;
+    color: #059669 !important;
+    border: 1px solid #a7f3d0 !important;
+    border-radius: 9999px !important;
+    font-weight: 600 !important;
+    font-size: 12px !important;
+    padding: 3px 12px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    text-decoration: none !important;
+}
+
+.badge-status-active::before,
+.badge-active::before {
+    content: "" !important;
+    display: inline-block !important;
+    width: 6px !important;
+    height: 6px !important;
+    border-radius: 50% !important;
+    background-color: #10b981 !important;
+}
+
+.badge-status-inactive,
+.badge-inactive {
+    background-color: #fef2f2 !important;
+    color: #dc2626 !important;
+    border: 1px solid #fecaca !important;
+    border-radius: 9999px !important;
+    font-weight: 600 !important;
+    font-size: 12px !important;
+    padding: 3px 12px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    text-decoration: none !important;
+}
+
+.badge-status-inactive::before,
+.badge-inactive::before {
+    content: "" !important;
+    display: inline-block !important;
+    width: 6px !important;
+    height: 6px !important;
+    border-radius: 50% !important;
+    background-color: #ef4444 !important;
+}
+
+/* Action Icons (Edit Pencil, Delete Trash) */
+.btn-icon,
+.btn-action-edit,
+.btn-action-delete,
+a.btn-icon,
+button.btn-icon {
+    width: 32px !important;
+    height: 32px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border: none !important;
+    background: transparent !important;
+    color: #94a3b8 !important;
+    border-radius: 8px !important;
+    padding: 0 !important;
+    font-size: 15px !important;
+    transition: all 0.15s ease-in-out !important;
+    text-decoration: none !important;
+}
+
+.btn-icon:hover,
+.btn-action-edit:hover,
+a.btn-icon:hover {
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
+}
+
+.btn-action-delete:hover,
+button.btn-icon:has(.bi-trash):hover,
+a.btn-icon:has(.bi-trash):hover,
+button.btn-outline-danger:hover {
+    background-color: #fee2e2 !important;
+    color: #dc2626 !important;
+}
+
+/* --- Mobile Responsiveness (Under 768px) --- */
+@media (max-width: 768px) {
+    .page-title, h2.page-title {
+        font-size: 24px !important;
+    }
+
+    body, html {
+        overflow-x: hidden !important;
+    }
+
+    /* Forms 1 column on mobile */
+    .row.g-2 > [class*="col-"],
+    .row.g-3 > [class*="col-"],
+    .row > [class*="col-md-"],
+    .row > [class*="col-sm-"] {
+        width: 100% !important;
+    }
+
+    /* Table cards under 768px if table-responsive-cards */
+    .table-responsive-cards thead {
+        display: none !important;
+    }
+
+    .table-responsive-cards,
+    .table-responsive-cards tbody,
+    .table-responsive-cards tr,
+    .table-responsive-cards td {
+        display: block !important;
+        width: 100% !important;
+    }
+
+    .table-responsive-cards tr {
+        margin-bottom: 1rem !important;
+        background: #ffffff !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 12px !important;
+        padding: 0.75rem 1rem !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+    }
+
+    .table-responsive-cards td {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        padding: 0.5rem 0 !important;
+        border-bottom: 1px dashed #e2e8f0 !important;
+        text-align: right !important;
+    }
+
+    .table-responsive-cards td:last-child {
+        border-bottom: none !important;
+        padding-top: 0.75rem !important;
+        justify-content: flex-end !important;
+    }
+}

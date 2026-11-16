@@ -42,4 +42,9 @@ class Stage extends Model
     {
         return $this->belongsTo(Equipment::class, 'default_equipment_id');
     }
+
+    public function recipeStages()
+    {
+        return $this->hasMany(RecipeStage::class);
+    }
 }

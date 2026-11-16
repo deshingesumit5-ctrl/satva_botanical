@@ -19,4 +19,14 @@ class Department extends Model
     {
         return $this->hasMany(User::class);
     }
+
+    public function getHeadOfDepartmentAttribute()
+    {
+        return $this->attributes['department_head'] ?? null;
+    }
+
+    public function setHeadOfDepartmentAttribute($value)
+    {
+        $this->attributes['department_head'] = $value;
+    }
 }

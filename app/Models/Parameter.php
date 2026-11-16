@@ -14,4 +14,19 @@ class Parameter extends Model
         'decimal_precision' => 'integer',
         'options' => 'array',
     ];
+
+    public function recipeParameters()
+    {
+        return $this->hasMany(RecipeParameter::class);
+    }
+
+    public function getDefaultUomAttribute()
+    {
+        return $this->attributes['uom'] ?? null;
+    }
+
+    public function setDefaultUomAttribute($value)
+    {
+        $this->attributes['uom'] = $value;
+    }
 }

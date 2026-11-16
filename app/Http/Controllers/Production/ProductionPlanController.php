@@ -29,10 +29,10 @@ class ProductionPlanController extends Controller
 
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
-                $q->where('plan_no', 'like', "%{$search}%")
-                  ->orWhereHas('product', function ($pq) use ($search) {
-                      $pq->where('name', 'like', "%{$search}%");
-                  });
+                $q->where('plan_number', 'like', "%{$search}%")
+                    ->orWhereHas('product', function ($pq) use ($search) {
+                        $pq->where('name', 'like', "%{$search}%");
+                    });
             });
         }
 
@@ -47,9 +47,11 @@ class ProductionPlanController extends Controller
 
     public function create()
     {
-        $products = Product::where('status', 'Active')->with(['recipes' => function ($q) {
-            $q->where('status', 'Active');
-        }])->get();
+        $products = Product::where('status', 'Active')->with([
+            'recipes' => function ($q) {
+                $q->where('status', 'Active');
+            }
+        ])->get();
         $recipes = Recipe::where('status', 'Active')->with('currentVersion.batchUom')->get();
         $plants = Plant::where('status', 'Active')->get();
         $warehouses = Warehouse::where('status', 'Active')->where('type', 'Finished Goods')->get();
@@ -60,11 +62,15 @@ class ProductionPlanController extends Controller
 
     public function store(Request $request)
     {
+        if (!$request->has('planned_qty') && $request->has('planned_quantity')) {
+            $request->merge(['planned_qty' => $request->input('planned_quantity')]);
+        }
+
         $validated = $request->validate([
             'product_id' => 'required|exists:products,id',
             'recipe_id' => 'required|exists:recipes,id',
             'plant_id' => 'required|exists:plants,id',
-            'warehouse_id' => 'required|exists:warehouses,id',
+            'warehouse_id' => 'nullable|exists:warehouses,id',
             'planned_qty' => 'required|numeric|min:0.01',
             'uom_id' => 'required|exists:uoms,id',
             'start_date' => 'required|date',
@@ -72,26 +78,31 @@ class ProductionPlanController extends Controller
             'remarks' => 'nullable|string',
         ]);
 
+        $recipe = Recipe::findOrFail($validated['recipe_id']);
+        $versionId = $recipe->current_version_id ?? $recipe->versions()->latest()->value('id');
+        $warehouseId = $validated['warehouse_id'] ?? Warehouse::where('status', 'Active')->value('id');
+
         $planNo = $this->docService->generate('PROD_PLAN');
 
         $plan = ProductionPlan::create([
-            'plan_no' => $planNo,
+            'plan_number' => $planNo,
             'product_id' => $validated['product_id'],
             'recipe_id' => $validated['recipe_id'],
+            'recipe_version_id' => $versionId,
             'plant_id' => $validated['plant_id'],
-            'warehouse_id' => $validated['warehouse_id'],
+            'warehouse_id' => $warehouseId,
             'planned_qty' => $validated['planned_qty'],
             'uom_id' => $validated['uom_id'],
-            'start_date' => $validated['start_date'],
-            'end_date' => $validated['end_date'],
+            'planned_start_date' => $validated['start_date'],
+            'required_completion_date' => $validated['end_date'],
             'status' => 'Draft',
             'remarks' => $validated['remarks'] ?? null,
             'created_by' => Auth::id(),
         ]);
 
-        AuditService::log('production', $plan->plan_no, 'create_plan', null, $plan->toArray(), 'Created production plan');
+        AuditService::log('production', $plan->plan_number, 'create_plan', null, $plan->toArray(), 'Created production plan');
 
-        return redirect()->route('production.plans.show', $plan->id)->with('success', "Production Plan {$plan->plan_no} created.");
+        return redirect()->route('production.plans.show', $plan->id)->with('success', "Production Plan {$plan->plan_number} created.");
     }
 
     public function show(ProductionPlan $plan)
@@ -140,11 +151,15 @@ class ProductionPlanController extends Controller
             return back()->with('error', 'Only Draft plans can be deleted.');
         }
 
-        $code = $plan->plan_no;
-        $plan->delete();
-        AuditService::log('production', $code, 'delete_plan', null, null, 'Deleted production plan');
+        try {
+            $code = $plan->plan_no;
+            $plan->delete();
+            AuditService::log('production', $code, 'delete_plan', null, null, 'Deleted production plan');
 
-        return redirect()->route('production.plans.index')->with('success', 'Production Plan deleted.');
+            return redirect()->route('production.plans.index')->with('success', 'Production Plan deleted.');
+        } catch (\Illuminate\Database\QueryException $e) {
+            return back()->with('error', 'This record is already used and cannot be deleted. You can deactivate it.');
+        }
     }
 
     public function approve(ProductionPlan $plan)

@@ -29,4 +29,19 @@ class QcTest extends Model
     {
         $this->attributes['test_code'] = $value;
     }
+
+    public function recipeQcTests()
+    {
+        return $this->hasMany(RecipeQcTest::class);
+    }
+
+    public function getTestTypeAttribute()
+    {
+        return $this->attributes['test_category'] ?? null;
+    }
+
+    public function setTestTypeAttribute($value)
+    {
+        $this->attributes['test_category'] = $value;
+    }
 }

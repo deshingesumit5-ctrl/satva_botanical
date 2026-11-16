@@ -17,8 +17,8 @@ class StageController extends Controller
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('stage_name', 'like', "%{$search}%")
-                  ->orWhere('stage_code', 'like', "%{$search}%")
-                  ->orWhere('category', 'like', "%{$search}%");
+                    ->orWhere('stage_code', 'like', "%{$search}%")
+                    ->orWhere('category', 'like', "%{$search}%");
             });
         }
 
@@ -39,6 +39,22 @@ class StageController extends Controller
 
     public function store(Request $request)
     {
+        if ($request->has('name') && !$request->has('stage_name')) {
+            $request->merge(['stage_name' => $request->name]);
+        }
+        if ($request->has('code') && !$request->has('stage_code')) {
+            $request->merge(['stage_code' => $request->code]);
+        }
+        if (!$request->filled('category')) {
+            $request->merge(['category' => 'Processing']);
+        }
+        if (!$request->filled('duration_uom')) {
+            $request->merge(['duration_uom' => 'Hours']);
+        }
+        if ($request->has('standard_duration_hours') && !$request->has('default_duration')) {
+            $request->merge(['default_duration' => (int) $request->standard_duration_hours, 'duration_uom' => 'Hours']);
+        }
+
         $validated = $request->validate([
             'stage_code' => 'required|string|max:30|unique:stages,stage_code',
             'stage_name' => 'required|string|max:100',
@@ -73,6 +89,19 @@ class StageController extends Controller
 
     public function update(Request $request, Stage $stage)
     {
+        if ($request->has('name') && !$request->has('stage_name')) {
+            $request->merge(['stage_name' => $request->name]);
+        }
+        if (!$request->filled('category')) {
+            $request->merge(['category' => $stage->category ?? 'Processing']);
+        }
+        if (!$request->filled('duration_uom')) {
+            $request->merge(['duration_uom' => $stage->duration_uom ?? 'Hours']);
+        }
+        if ($request->has('standard_duration_hours') && !$request->has('default_duration')) {
+            $request->merge(['default_duration' => (int) $request->standard_duration_hours, 'duration_uom' => 'Hours']);
+        }
+
         $validated = $request->validate([
             'stage_name' => 'required|string|max:100',
             'category' => 'required|in:Processing,Treatment,Separation,Drying',
@@ -98,15 +127,19 @@ class StageController extends Controller
 
     public function destroy(Stage $stage)
     {
-        if ($stage->recipeStages()->exists() || $stage->batchStageExecutions()->exists()) {
-            return back()->with('error', "Cannot delete stage '{$stage->stage_name}' as it is mapped in recipes or batches. You can deactivate it instead.");
+        if ($stage->recipeStages()->exists()) {
+            return back()->with('error', "This record is already used and cannot be deleted. You can deactivate it.");
         }
 
-        $old = $stage->toArray();
-        $stage->delete();
-        AuditService::log('masters', $stage->stage_code, 'delete', $old, null, 'Deleted stage');
+        try {
+            $old = $stage->toArray();
+            $stage->delete();
+            AuditService::log('masters', $stage->stage_code, 'delete', $old, null, 'Deleted stage');
 
-        return redirect()->route('masters.stages.index')->with('success', "Stage deleted successfully.");
+            return redirect()->route('masters.stages.index')->with('success', "Stage deleted successfully.");
+        } catch (\Illuminate\Database\QueryException $e) {
+            return back()->with('error', "This record is already used and cannot be deleted. You can deactivate it.");
+        }
     }
 
     public function toggleStatus(Stage $stage)

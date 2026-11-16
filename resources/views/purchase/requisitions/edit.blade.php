@@ -15,7 +15,7 @@
             <form action="{{ route('purchase.requisitions.update', $requisition) }}" method="POST">
                 @csrf @method('PUT')
                 <div class="row g-3 mb-4">
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label class="form-label required">Plant Facility</label>
                         <select name="plant_id" class="form-select" required>
                             @foreach($plants as $p)
@@ -23,7 +23,7 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label class="form-label required">Requesting Department</label>
                         <select name="department_id" class="form-select" required>
                             @foreach($departments as $d)
@@ -31,9 +31,17 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label class="form-label required">Required By Date</label>
                         <input type="date" name="required_by_date" class="form-control" required value="{{ old('required_by_date', $requisition->required_by_date ? \Carbon\Carbon::parse($requisition->required_by_date)->format('Y-m-d') : '') }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label required">Priority</label>
+                        <select name="priority" class="form-select" required>
+                            @foreach(['Low', 'Medium', 'High', 'Urgent'] as $prio)
+                                <option value="{{ $prio }}" {{ old('priority', $requisition->priority ?? 'Medium') === $prio ? 'selected' : '' }}>{{ $prio }}</option>
+                            @endforeach
+                        </select>
                     </div>
                 </div>
 

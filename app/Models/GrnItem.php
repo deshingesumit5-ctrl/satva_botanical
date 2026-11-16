@@ -51,4 +51,29 @@ class GrnItem extends Model
     {
         return $this->hasOne(StockLot::class, 'grn_item_id');
     }
+
+    public function getReceivedQuantityAttribute()
+    {
+        return $this->attributes['received_qty'] ?? 0;
+    }
+
+    public function getAcceptedQuantityAttribute()
+    {
+        return $this->attributes['accepted_qty'] ?? 0;
+    }
+
+    public function getRejectedQuantityAttribute()
+    {
+        return $this->attributes['rejected_qty'] ?? 0;
+    }
+
+    public function getVendorLotNumberAttribute()
+    {
+        return $this->attributes['remarks'] ?? $this->attributes['lot_number'] ?? null;
+    }
+
+    public function getStockLotIdAttribute()
+    {
+        return $this->stockLot?->id;
+    }
 }

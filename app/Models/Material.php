@@ -36,4 +36,19 @@ class Material extends Model
     {
         return $this->hasMany(StockLot::class);
     }
+
+    public function purchaseOrderItems()
+    {
+        return $this->hasMany(PurchaseOrderItem::class);
+    }
+
+    public function getStorageConditionsAttribute()
+    {
+        return $this->attributes['storage_condition'] ?? null;
+    }
+
+    public function setStorageConditionsAttribute($value)
+    {
+        $this->attributes['storage_condition'] = $value;
+    }
 }

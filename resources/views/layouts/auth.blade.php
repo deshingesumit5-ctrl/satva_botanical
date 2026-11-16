@@ -28,10 +28,10 @@
 <body class="login-page-body">
 
     <div class="login-wrapper">
-        <div class="login-header">
+        <!-- <div class="login-header">
             <h1 class="login-header-title">Welcome back!</h1>
             <p class="login-header-subtitle">Sign in to your account to continue</p>
-        </div>
+        </div> -->
 
         <div class="login-card">
             @yield('content')

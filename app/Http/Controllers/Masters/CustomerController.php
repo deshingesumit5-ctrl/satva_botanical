@@ -41,6 +41,10 @@ class CustomerController extends Controller
 
     public function store(Request $request)
     {
+        if ($request->has('customer_code') && !$request->has('code')) {
+            $request->merge(['code' => $request->input('customer_code')]);
+        }
+
         $validated = $request->validate([
             'code' => 'required|string|max:30|unique:customers,code',
             'name' => 'required|string|max:150',
@@ -99,14 +103,18 @@ class CustomerController extends Controller
     public function destroy(Customer $customer)
     {
         if ($customer->salesOrders()->exists()) {
-            return back()->with('error', "Cannot delete customer '{$customer->name}' because sales orders are linked to this customer. You can deactivate it instead.");
+            return back()->with('error', "This record is already used and cannot be deleted. You can deactivate it.");
         }
 
-        $old = $customer->toArray();
-        $customer->delete();
-        AuditService::log('masters', $customer->code, 'delete', $old, null, 'Deleted customer');
+        try {
+            $old = $customer->toArray();
+            $customer->delete();
+            AuditService::log('masters', $customer->code, 'delete', $old, null, 'Deleted customer');
 
-        return redirect()->route('masters.customers.index')->with('success', "Customer deleted successfully.");
+            return redirect()->route('masters.customers.index')->with('success', "Customer deleted successfully.");
+        } catch (\Illuminate\Database\QueryException $e) {
+            return back()->with('error', "This record is already used and cannot be deleted. You can deactivate it.");
+        }
     }
 
     public function toggleStatus(Customer $customer)

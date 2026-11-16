@@ -51,7 +51,10 @@
                    id="password" 
                    class="login-input @error('password') is-invalid @enderror" 
                    required 
-                   autocomplete="current-password" 
+                   value=""
+                   autocomplete="new-password" 
+                   readonly
+                   onfocus="this.removeAttribute('readonly')"
                    placeholder="Enter your password">
             <button class="password-toggle-btn" type="button" onclick="togglePassword('password', 'passwordToggleIcon')" aria-label="Toggle password visibility">
                 <i class="bi bi-eye" id="passwordToggleIcon"></i>
@@ -82,7 +85,17 @@
 </form>
 
 <script>
+    function clearPasswordField() {
+        const pwd = document.getElementById('password');
+        if (pwd) {
+            pwd.value = '';
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
+        clearPasswordField();
+        setTimeout(clearPasswordField, 300);
+
         const form = document.getElementById('loginForm');
         if (form) {
             form.addEventListener('submit', function () {
@@ -95,6 +108,12 @@
                     if (text) text.textContent = 'Signing in...';
                 }
             });
+        }
+    });
+
+    window.addEventListener('pageshow', function (event) {
+        if (event.persisted) {
+            clearPasswordField();
         }
     });
 </script>

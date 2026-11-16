@@ -34,30 +34,6 @@ class RecipeService
             $errors[] = 'Recipe must have at least one stage before activation.';
         }
 
-        foreach ($version->stages as $stage) {
-            // Validation 5: Missing mandatory parameter mapping
-            // Check if stage master says material input/output or activity required
-            if ($stage->stage && $stage->stage->material_input_required) {
-                if ($stage->inputMaterials()->count() === 0) {
-                    $errors[] = "Stage '{$stage->stage->stage_name}' (Occurrence {$stage->occurrence_no}) requires at least one input material.";
-                }
-            }
-
-            if ($stage->stage && $stage->stage->material_output_required) {
-                if ($stage->outputMaterials()->count() === 0) {
-                    $errors[] = "Stage '{$stage->stage->stage_name}' (Occurrence {$stage->occurrence_no}) requires at least one output material/product.";
-                }
-            }
-
-            // Check mandatory parameters
-            if ($stage->parameters()->where('is_mandatory', true)->count() === 0 && $stage->stage && $stage->stage->category === 'Processing') {
-                // If it's a processing stage, check if it has parameters
-                if ($stage->parameters()->count() === 0) {
-                    $errors[] = "Stage '{$stage->stage->stage_name}' (Occurrence {$stage->occurrence_no}) has no parameter mapping.";
-                }
-            }
-        }
-
         return $errors;
     }
 

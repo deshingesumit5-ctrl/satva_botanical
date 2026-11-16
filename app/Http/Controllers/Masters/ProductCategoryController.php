@@ -17,7 +17,7 @@ class ProductCategoryController extends Controller
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('code', 'like', "%{$search}%");
+                    ->orWhere('code', 'like', "%{$search}%");
             });
         }
 
@@ -65,6 +65,10 @@ class ProductCategoryController extends Controller
 
     public function update(Request $request, ProductCategory $category)
     {
+        if (!$request->filled('display_order')) {
+            $request->merge(['display_order' => $category->display_order ?? 1]);
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:100',
             'display_order' => 'required|integer|min:1',
@@ -86,14 +90,18 @@ class ProductCategoryController extends Controller
     public function destroy(ProductCategory $category)
     {
         if ($category->products()->exists()) {
-            return back()->with('error', "Cannot delete category '{$category->name}' because products are assigned to it. You can deactivate it instead.");
+            return back()->with('error', "This record is already used and cannot be deleted. You can deactivate it.");
         }
 
-        $old = $category->toArray();
-        $category->delete();
-        AuditService::log('masters', $category->code, 'delete', $old, null, 'Deleted category');
+        try {
+            $old = $category->toArray();
+            $category->delete();
+            AuditService::log('masters', $category->code, 'delete', $old, null, 'Deleted category');
 
-        return redirect()->route('masters.categories.index')->with('success', "Category deleted successfully.");
+            return redirect()->route('masters.categories.index')->with('success', "Category deleted successfully.");
+        } catch (\Illuminate\Database\QueryException $e) {
+            return back()->with('error', "This record is already used and cannot be deleted. You can deactivate it.");
+        }
     }
 
     public function toggleStatus(ProductCategory $category)

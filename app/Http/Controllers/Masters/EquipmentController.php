@@ -43,6 +43,17 @@ class EquipmentController extends Controller
 
     public function store(Request $request)
     {
+        if ($request->has('equipment_type') && !$request->has('category')) {
+            $request->merge(['category' => $request->equipment_type]);
+        }
+        if (!$request->filled('equipment_status')) {
+            if ($request->status === 'Maintenance') {
+                $request->merge(['equipment_status' => 'Under Maintenance', 'status' => 'Active']);
+            } else {
+                $request->merge(['equipment_status' => 'Available']);
+            }
+        }
+
         $validated = $request->validate([
             'code' => 'required|string|max:30|unique:equipments,code',
             'name' => 'required|string|max:100',
@@ -82,6 +93,17 @@ class EquipmentController extends Controller
 
     public function update(Request $request, Equipment $equipment)
     {
+        if ($request->has('equipment_type') && !$request->has('category')) {
+            $request->merge(['category' => $request->equipment_type]);
+        }
+        if (!$request->filled('equipment_status')) {
+            if ($request->status === 'Maintenance') {
+                $request->merge(['equipment_status' => 'Under Maintenance', 'status' => 'Active']);
+            } else {
+                $request->merge(['equipment_status' => $equipment->equipment_status ?? 'Available']);
+            }
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:100',
             'category' => 'nullable|string|max:50',
@@ -111,14 +133,18 @@ class EquipmentController extends Controller
     public function destroy(Equipment $equipment)
     {
         if ($equipment->recipeEquipments()->exists()) {
-            return back()->with('error', "Cannot delete equipment '{$equipment->name}' as it is mapped in recipe stages. You can deactivate it instead.");
+            return back()->with('error', "This record is already used and cannot be deleted. You can deactivate it.");
         }
 
-        $old = $equipment->toArray();
-        $equipment->delete();
-        AuditService::log('masters', $equipment->code, 'delete', $old, null, 'Deleted equipment');
+        try {
+            $old = $equipment->toArray();
+            $equipment->delete();
+            AuditService::log('masters', $equipment->code, 'delete', $old, null, 'Deleted equipment');
 
-        return redirect()->route('masters.equipments.index')->with('success', "Equipment deleted successfully.");
+            return redirect()->route('masters.equipments.index')->with('success', "Equipment deleted successfully.");
+        } catch (\Illuminate\Database\QueryException $e) {
+            return back()->with('error', "This record is already used and cannot be deleted. You can deactivate it.");
+        }
     }
 
     public function toggleStatus(Equipment $equipment)

@@ -47,24 +47,26 @@
                             @forelse($qcRequest->results as $res)
                             <tr>
                                 <td>
-                                    <div class="fw-bold">{{ $res->qcTest->name ?? 'Test' }}</div>
+                                    <div class="fw-bold">{{ $res->test_name ?? $res->qcTest->name ?? 'Test' }}</div>
                                     <small class="text-muted">{{ $res->qcTest->test_type ?? '' }}</small>
                                 </td>
                                 <td>
-                                    @if($res->standard_min !== null || $res->standard_max !== null)
-                                        {{ $res->standard_min ?? 'Min' }} to {{ $res->standard_max ?? 'Max' }}
+                                    @if($res->expected_min !== null || $res->expected_max !== null)
+                                        {{ $res->expected_min ?? 'Min' }} to {{ $res->expected_max ?? 'Max' }} {{ $res->uom ?? '' }}
+                                    @elseif($res->expected_value !== null)
+                                        Target: {{ $res->expected_value }} {{ $res->uom ?? '' }}
                                     @else
                                         {{ $res->qcTest->standard_specification ?? 'Conforms' }}
                                     @endif
                                 </td>
-                                <td>{{ $res->qcTest->test_method ?? 'In-House' }}</td>
+                                <td>{{ $res->test_method ?? $res->qcTest->test_method ?? 'In-House' }}</td>
                                 <td>
                                     <input type="text" name="results[{{ $res->id }}][actual_value]" class="form-control form-control-sm" value="{{ $res->actual_value }}" placeholder="Observed reading" {{ $qcRequest->status !== 'Pending' ? 'disabled' : '' }}>
                                 </td>
                                 <td>
-                                    @if($res->is_passed === true)
+                                    @if($res->actual_value !== null && $res->result_status === 'Pass')
                                         <span class="badge bg-success">Passed</span>
-                                    @elseif($res->is_passed === false)
+                                    @elseif($res->actual_value !== null && $res->result_status === 'Fail')
                                         <span class="badge bg-danger">Failed</span>
                                     @else
                                         <span class="badge bg-secondary">Awaiting Entry</span>
@@ -94,7 +96,10 @@
             </form>
 
             <form id="approveQcForm" action="{{ route('qc.approve', $qcRequest) }}" method="POST" class="d-none">@csrf</form>
-            <form id="rejectQcForm" action="{{ route('qc.reject', $qcRequest) }}" method="POST" class="d-none">@csrf</form>
+            <form id="rejectQcForm" action="{{ route('qc.reject', $qcRequest) }}" method="POST" class="d-none">
+                @csrf
+                <input type="hidden" name="reason" value="Rejected during QC inspection (OOS)">
+            </form>
         </div>
     </div>
 </div>

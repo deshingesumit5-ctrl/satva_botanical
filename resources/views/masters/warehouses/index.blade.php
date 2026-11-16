@@ -50,9 +50,8 @@
                             <td>{{ $w->plant ? $w->plant->name : '-' }}</td>
                             <td><x-status-badge :status="$w->status" /></td>
                             <td class="text-end">
-                                <button class="btn btn-sm btn-outline-secondary rounded-circle p-1 me-1" onclick="editWh({{ $w->id }})" title="Edit"><i class="bi bi-pencil"></i></button>
-                                <button class="btn btn-sm btn-outline-danger rounded-circle p-1" onclick="deleteWh({{ $w->id }}, '{{ addslashes($w->name) }}')" title="Delete"><i class="bi bi-trash"></i></button>
-                                <form id="del-wh-{{ $w->id }}" action="{{ route('masters.warehouses.destroy', $w->id) }}" method="POST" class="d-none">@csrf @method('DELETE')</form>
+                                <a href="{{ route('masters.warehouses.edit', $w) }}" class="btn btn-sm btn-icon btn-action-edit me-1" title="Edit"><i class="bi bi-pencil"></i></a>
+                                <button type="button" class="btn btn-sm btn-icon btn-action-delete" data-url="{{ route('masters.warehouses.destroy', $w) }}" data-name="{{ $w->name }}" title="Delete"><i class="bi bi-trash"></i></button>
                             </td>
                         </tr>
                     @empty

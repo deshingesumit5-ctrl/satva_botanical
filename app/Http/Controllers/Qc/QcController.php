@@ -74,10 +74,23 @@ class QcController extends Controller
             $r = QcRequestResult::find($resultId);
             if ($r && $r->qc_request_id === $qcRequest->id) {
                 $r->actual_value = $data['actual_value'] ?? null;
-                $r->is_pass = isset($data['is_pass']);
-                $r->remarks = $data['remarks'] ?? null;
-                $r->tested_by = Auth::id();
-                $r->tested_at = now();
+                $r->remarks = $data['remarks'] ?? $r->remarks;
+
+                if ($r->actual_value !== null && is_numeric($r->actual_value)) {
+                    $val = (float) $r->actual_value;
+                    $min = ($r->expected_min !== null && is_numeric($r->expected_min)) ? (float) $r->expected_min : null;
+                    $max = ($r->expected_max !== null && is_numeric($r->expected_max)) ? (float) $r->expected_max : null;
+                    $pass = true;
+                    if ($min !== null && $val < $min) {
+                        $pass = false;
+                    }
+                    if ($max !== null && $val > $max) {
+                        $pass = false;
+                    }
+                    $r->result_status = $pass ? 'Pass' : 'Fail';
+                } elseif (isset($data['result_status'])) {
+                    $r->result_status = $data['result_status'];
+                }
                 $r->save();
             }
         }

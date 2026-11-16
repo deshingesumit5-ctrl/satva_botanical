@@ -189,7 +189,7 @@ class QcService
                 'status' => 'In Progress',
             ]);
 
-            NotificationService::notifyRole('production_supervisor', 'QC Rework Required', "Batch {$batch->batch_number} - Stage {$origExec->stage_name} requires rework: {$instructions}", route('production.execution.stage', [$batch->id, $newExec->id]), 'qc_rework');
+            NotificationService::notifyRole('production_supervisor', 'QC Rework Required', "Batch {$batch->batch_number} - Stage {$origExec->stage_name} requires rework: {$instructions}", route('production.execution.show', ['batch' => $batch->id, 'stage_execution_id' => $newExec->id]), 'qc_rework');
 
             AuditService::log('QC', 'Request Rework', "Rework: {$rework->rework_number}", null, [
                 'batch' => $batch->batch_number,

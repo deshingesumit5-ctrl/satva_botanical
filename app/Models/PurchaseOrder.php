@@ -50,4 +50,29 @@ class PurchaseOrder extends Model
     {
         return $this->hasMany(Grn::class);
     }
+
+    public function getDeliveryTermsAttribute()
+    {
+        return $this->attributes['terms_conditions'] ?? null;
+    }
+
+    public function setDeliveryTermsAttribute($value)
+    {
+        $this->attributes['terms_conditions'] = $value;
+    }
+
+    public function getRemarksAttribute()
+    {
+        return $this->attributes['terms_conditions'] ?? null;
+    }
+
+    public function setRemarksAttribute($value)
+    {
+        $this->attributes['terms_conditions'] = $value;
+    }
+
+    public function getPlantIdAttribute()
+    {
+        return $this->requisition?->plant_id ?? Plant::where('status', 'Active')->value('id');
+    }
 }

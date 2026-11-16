@@ -18,8 +18,8 @@ class ProductController extends Controller
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('product_code', 'like', "%{$search}%")
-                  ->orWhere('hsn_code', 'like', "%{$search}%");
+                    ->orWhere('product_code', 'like', "%{$search}%")
+                    ->orWhere('hsn_code', 'like', "%{$search}%");
             });
         }
 
@@ -126,14 +126,18 @@ class ProductController extends Controller
     public function destroy(Product $product)
     {
         if ($product->recipes()->exists() || $product->batches()->exists() || $product->salesOrderItems()->exists()) {
-            return back()->with('error', "Cannot delete product '{$product->name}' as it is used in recipes, manufacturing batches, or sales orders. You can deactivate it instead.");
+            return back()->with('error', "This record is already used and cannot be deleted. You can deactivate it.");
         }
 
-        $old = $product->toArray();
-        $product->delete();
-        AuditService::log('masters', $product->product_code, 'delete', $old, null, 'Deleted product');
+        try {
+            $old = $product->toArray();
+            $product->delete();
+            AuditService::log('masters', $product->product_code, 'delete', $old, null, 'Deleted product');
 
-        return redirect()->route('masters.products.index')->with('success', "Product deleted successfully.");
+            return redirect()->route('masters.products.index')->with('success', "Product deleted successfully.");
+        } catch (\Illuminate\Database\QueryException $e) {
+            return back()->with('error', "This record is already used and cannot be deleted. You can deactivate it.");
+        }
     }
 
     public function toggleStatus(Product $product)

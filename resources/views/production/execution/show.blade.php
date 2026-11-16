@@ -54,7 +54,7 @@
             </div>
         </div>
         <div class="card-sattva-body p-4">
-            <form action="{{ route('production.execution.save-stage', ['batch' => $batch->id, 'stageExecution' => $activeExecution->id]) }}" method="POST">
+            <form id="stageExecutionForm" action="{{ route('production.execution.save-stage', ['batch' => $batch->id, 'stageExecution' => $activeExecution->id]) }}" method="POST">
                 @csrf
 
                 <!-- Section A: Line Clearance & Equipment -->
@@ -66,7 +66,7 @@
                             <select name="equipment_id" class="form-select" required>
                                 <option value="">Select Operating Vessel</option>
                                 @foreach($equipments as $eq)
-                                    <option value="{{ $eq->id }}" {{ $activeExecution->equipment_id == $eq->id ? 'selected' : '' }}>{{ $eq->name }} ({{ $eq->equipment_type }})</option>
+                                    <option value="{{ $eq->id }}" {{ $activeExecution->equipment_id == $eq->id ? 'selected' : '' }}>{{ $eq->name }} ({{ $eq->category ?? $eq->equipment_type }})</option>
                                 @endforeach
                             </select>
                         </div>
@@ -101,17 +101,17 @@
                             <tbody>
                                 @forelse(($activeExecution->parameterLogs ?? $activeExecution->parameters ?? []) as $idx => $pLog)
                                 <tr>
-                                    <td class="fw-bold">{{ $pLog->parameter->name ?? 'Parameter' }}</td>
-                                    <td>{{ $pLog->target_value ?? '-' }}</td>
-                                    <td>{{ $pLog->min_value ?? 0 }} - {{ $pLog->max_value ?? 0 }}</td>
+                                    <td class="fw-bold">{{ $pLog->parameter_name ?? $pLog->recipeParameter->parameter->name ?? 'Parameter' }}</td>
+                                    <td>{{ $pLog->target_value ?? '-' }} {{ $pLog->uom ?? '' }}</td>
+                                    <td>{{ $pLog->min_value ?? 0 }} - {{ $pLog->max_value ?? 0 }} {{ $pLog->uom ?? '' }}</td>
                                     <td>
                                         <input type="hidden" name="parameters[{{ $idx }}][id]" value="{{ $pLog->id }}">
-                                        <input type="text" name="parameters[{{ $idx }}][logged_value]" class="form-control form-control-sm" value="{{ $pLog->logged_value }}" placeholder="Enter reading">
+                                        <input type="text" name="parameters[{{ $idx }}][actual_value]" class="form-control form-control-sm" value="{{ $pLog->actual_value ?? $pLog->target_value }}" placeholder="Enter reading">
                                     </td>
                                     <td>
-                                        @if($pLog->is_in_range)
+                                        @if($pLog->actual_value !== null && $pLog->is_within_range)
                                             <span class="badge bg-success">Within Spec</span>
-                                        @elseif($pLog->logged_value !== null)
+                                        @elseif($pLog->actual_value !== null && !$pLog->is_within_range)
                                             <span class="badge bg-danger">Deviation</span>
                                         @else
                                             <span class="badge bg-secondary">Pending</span>
@@ -119,7 +119,7 @@
                                     </td>
                                 </tr>
                                 @empty
-                                <tr><td colspan="5" class="text-center py-2 text-muted">No parameters configured for this stage.</td></tr>
+                                <tr><td colspan="5" class="text-center py-2 text-muted">No parameters configured for this stage in Recipe Step 4.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>
@@ -144,14 +144,14 @@
                                 <tr>
                                     <td class="fw-bold">{{ $cons->material->name ?? '-' }}</td>
                                     <td><span class="badge bg-light text-dark border">Charge (Input)</span></td>
-                                    <td>{{ $cons->standard_quantity ?? 0 }} {{ $cons->uom->symbol ?? '' }}</td>
+                                    <td>{{ $cons->allocated_qty ?? $cons->standard_quantity ?? 0 }} {{ $cons->uom->symbol ?? $cons->uom->uom_code ?? '' }}</td>
                                     <td>
                                         <input type="hidden" name="materials[{{ $idx }}][id]" value="{{ $cons->id }}">
-                                        <input type="number" step="0.001" name="materials[{{ $idx }}][actual_quantity]" class="form-control form-control-sm" value="{{ $cons->actual_quantity }}">
+                                        <input type="number" step="0.001" name="materials[{{ $idx }}][actual_quantity]" class="form-control form-control-sm" value="{{ $cons->actual_consumed_qty ?? $cons->allocated_qty }}">
                                     </td>
                                 </tr>
                                 @empty
-                                <tr><td colspan="4" class="text-center py-2 text-muted">No material charges defined for this stage.</td></tr>
+                                <tr><td colspan="4" class="text-center py-2 text-muted">No material charges defined for this stage in Recipe Step 5.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>
@@ -180,15 +180,11 @@
                 <div class="d-flex justify-content-between pt-3 border-top">
                     <button type="submit" class="btn btn-primary-sattva"><i class="bi bi-save me-1"></i> Save Stage Log</button>
                     @if($activeExecution->status === 'In Progress')
-                        <button type="button" class="btn btn-success" onclick="confirmAction('Complete this stage and advance to the next manufacturing stage?', document.getElementById('completeStageForm'))">
+                        <button type="button" class="btn btn-success" onclick="const f = document.getElementById('stageExecutionForm'); f.action = '{{ route('production.execution.complete-stage', ['batch' => $batch->id, 'stageExecution' => $activeExecution->id]) }}'; confirmAction('Complete this stage and advance to the next manufacturing stage?', f)">
                             <i class="bi bi-check-all me-1"></i> Complete Stage & Advance
                         </button>
                     @endif
                 </div>
-            </form>
-
-            <form id="completeStageForm" action="{{ route('production.execution.complete-stage', ['batch' => $batch->id, 'stageExecution' => $activeExecution->id]) }}" method="POST" class="d-none">
-                @csrf
             </form>
         </div>
     </div>

@@ -71,7 +71,44 @@ class BatchStageExecution extends Model
 
     public function getConsumptionsAttribute()
     {
-        return $this->batch ? $this->batch->consumptions()->where('recipe_stage_id', $this->recipe_stage_id)->get() : collect();
+        return $this->batch ? $this->batch->consumptions()->with(['material', 'uom'])->where('recipe_stage_id', $this->recipe_stage_id)->get() : collect();
+    }
+
+    public function getLineClearanceByAttribute()
+    {
+        return $this->actual_operator_name;
+    }
+
+    public function getLineClearanceDoneAttribute()
+    {
+        return !empty($this->equipment_id);
+    }
+
+    public function getOutputQuantityAttribute()
+    {
+        $saved = $this->outputs->whereIn('output_type', ['WIP', 'Finished'])->sum('actual_qty');
+        if ($saved > 0) {
+            return $saved;
+        }
+        return $this->recipeStage ? $this->recipeStage->outputMaterials->whereIn('output_type', ['WIP', 'Finished'])->sum('standard_qty') : 0;
+    }
+
+    public function getSolventRecoveredQtyAttribute()
+    {
+        $saved = $this->outputs->where('output_type', 'Recovered')->sum('actual_qty');
+        if ($saved > 0) {
+            return $saved;
+        }
+        return $this->recipeStage ? $this->recipeStage->outputMaterials->where('output_type', 'Recovered')->sum('standard_qty') : 0;
+    }
+
+    public function getSpentHerbQtyAttribute()
+    {
+        $saved = $this->outputs->whereIn('output_type', ['Spent', 'Waste'])->sum('actual_qty');
+        if ($saved > 0) {
+            return $saved;
+        }
+        return $this->recipeStage ? $this->recipeStage->outputMaterials->whereIn('output_type', ['Spent', 'Waste'])->sum('standard_qty') : 0;
     }
 
     public function qcRequest()

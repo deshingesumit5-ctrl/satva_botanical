@@ -33,7 +33,7 @@ class PurchaseRequisitionController extends Controller
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('pr_number', 'like', "%{$search}%")
-                  ->orWhere('remarks', 'like', "%{$search}%");
+                  ->orWhere('reason', 'like', "%{$search}%");
             });
         }
 
@@ -59,10 +59,10 @@ class PurchaseRequisitionController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'plant_id' => 'required|exists:plants,id',
+            'plant_id' => 'nullable|exists:plants,id',
             'department_id' => 'required|exists:departments,id',
             'required_by_date' => 'required|date',
-            'priority' => 'required|in:Low,Medium,High,Urgent',
+            'priority' => 'nullable|in:Low,Medium,High,Urgent',
             'remarks' => 'nullable|string',
             'items' => 'required|array|min:1',
             'items.*.material_id' => 'required|exists:materials,id',
@@ -77,20 +77,19 @@ class PurchaseRequisitionController extends Controller
         $pr = DB::transaction(function () use ($validated, $prNumber) {
             $requisition = PurchaseRequisition::create([
                 'pr_number' => $prNumber,
-                'plant_id' => $validated['plant_id'],
+                'request_date' => now()->toDateString(),
                 'department_id' => $validated['department_id'],
                 'requested_by' => Auth::id(),
-                'required_by_date' => $validated['required_by_date'],
-                'priority' => $validated['priority'],
+                'priority' => $validated['priority'] ?? 'Medium',
                 'status' => 'Draft',
-                'remarks' => $validated['remarks'] ?? null,
+                'reason' => $validated['remarks'] ?? null,
             ]);
 
             foreach ($validated['items'] as $item) {
                 PurchaseRequisitionItem::create([
                     'purchase_requisition_id' => $requisition->id,
                     'material_id' => $item['material_id'],
-                    'quantity' => $item['quantity'],
+                    'required_qty' => $item['quantity'],
                     'uom_id' => $item['uom_id'],
                     'required_date' => $item['required_date'] ?? $validated['required_by_date'],
                     'remarks' => $item['remarks'] ?? null,
@@ -112,8 +111,8 @@ class PurchaseRequisitionController extends Controller
 
     public function edit(PurchaseRequisition $requisition)
     {
-        if ($requisition->status !== 'Draft') {
-            return redirect()->route('purchase.requisitions.show', $requisition->id)->with('warning', 'Only Draft requisitions can be edited.');
+        if (!in_array($requisition->status, ['Draft', 'Rejected'])) {
+            return redirect()->route('purchase.requisitions.show', $requisition->id)->with('warning', 'Only Draft or Rejected requisitions can be edited.');
         }
 
         $requisition->load('items');
@@ -127,15 +126,15 @@ class PurchaseRequisitionController extends Controller
 
     public function update(Request $request, PurchaseRequisition $requisition)
     {
-        if ($requisition->status !== 'Draft') {
-            return back()->with('error', 'Only Draft requisitions can be updated.');
+        if (!in_array($requisition->status, ['Draft', 'Rejected'])) {
+            return back()->with('error', 'Only Draft or Rejected requisitions can be updated.');
         }
 
         $validated = $request->validate([
-            'plant_id' => 'required|exists:plants,id',
+            'plant_id' => 'nullable|exists:plants,id',
             'department_id' => 'required|exists:departments,id',
             'required_by_date' => 'required|date',
-            'priority' => 'required|in:Low,Medium,High,Urgent',
+            'priority' => 'nullable|in:Low,Medium,High,Urgent',
             'remarks' => 'nullable|string',
             'items' => 'required|array|min:1',
             'items.*.material_id' => 'required|exists:materials,id',
@@ -147,11 +146,9 @@ class PurchaseRequisitionController extends Controller
 
         DB::transaction(function () use ($requisition, $validated) {
             $requisition->update([
-                'plant_id' => $validated['plant_id'],
                 'department_id' => $validated['department_id'],
-                'required_by_date' => $validated['required_by_date'],
-                'priority' => $validated['priority'],
-                'remarks' => $validated['remarks'] ?? null,
+                'priority' => $validated['priority'] ?? $requisition->priority ?? 'Medium',
+                'reason' => $validated['remarks'] ?? null,
             ]);
 
             // Replace items
@@ -160,7 +157,7 @@ class PurchaseRequisitionController extends Controller
                 PurchaseRequisitionItem::create([
                     'purchase_requisition_id' => $requisition->id,
                     'material_id' => $item['material_id'],
-                    'quantity' => $item['quantity'],
+                    'required_qty' => $item['quantity'],
                     'uom_id' => $item['uom_id'],
                     'required_date' => $item['required_date'] ?? $validated['required_by_date'],
                     'remarks' => $item['remarks'] ?? null,
@@ -175,17 +172,21 @@ class PurchaseRequisitionController extends Controller
 
     public function destroy(PurchaseRequisition $requisition)
     {
-        if ($requisition->status !== 'Draft') {
-            return back()->with('error', 'Only Draft requisitions can be deleted.');
+        if (!in_array($requisition->status, ['Draft', 'Rejected'])) {
+            return back()->with('error', 'Only Draft or Rejected requisitions can be deleted.');
         }
 
-        $code = $requisition->pr_number;
-        $requisition->items()->delete();
-        $requisition->delete();
+        try {
+            $code = $requisition->pr_number;
+            $requisition->items()->delete();
+            $requisition->delete();
 
-        AuditService::log('purchase', $code, 'delete_pr', null, null, 'Deleted purchase requisition');
+            AuditService::log('purchase', $code, 'delete_pr', null, null, 'Deleted purchase requisition');
 
-        return redirect()->route('purchase.requisitions.index')->with('success', 'Purchase Requisition deleted.');
+            return redirect()->route('purchase.requisitions.index')->with('success', 'Purchase Requisition deleted.');
+        } catch (\Illuminate\Database\QueryException $e) {
+            return back()->with('error', 'This record is already used and cannot be deleted. You can deactivate it.');
+        }
     }
 
     public function submit(PurchaseRequisition $requisition)
@@ -194,7 +195,7 @@ class PurchaseRequisitionController extends Controller
             return back()->with('error', 'Only Draft requisitions can be submitted.');
         }
 
-        $requisition->status = 'Pending Approval';
+        $requisition->status = 'Submitted';
         $requisition->save();
 
         AuditService::log('purchase', $requisition->pr_number, 'submit_pr', null, null, 'Submitted PR for approval');
@@ -204,8 +205,8 @@ class PurchaseRequisitionController extends Controller
 
     public function approve(PurchaseRequisition $requisition)
     {
-        if ($requisition->status !== 'Pending Approval') {
-            return back()->with('error', 'Only Pending Approval requisitions can be approved.');
+        if (!in_array($requisition->status, ['Submitted', 'Pending Approval'])) {
+            return back()->with('error', 'Only Submitted requisitions can be approved.');
         }
 
         $requisition->status = 'Approved';
@@ -220,10 +221,12 @@ class PurchaseRequisitionController extends Controller
 
     public function reject(Request $request, PurchaseRequisition $requisition)
     {
-        $request->validate(['reason' => 'required|string|max:500']);
+        $request->validate(['reason' => 'nullable|string|max:500']);
 
         $requisition->status = 'Rejected';
-        $requisition->remarks = ($requisition->remarks ? $requisition->remarks . "\n" : '') . "Rejection reason: " . $request->input('reason');
+        if ($request->filled('reason')) {
+            $requisition->reason = ($requisition->reason ? $requisition->reason . "\n" : '') . "Rejection reason: " . $request->input('reason');
+        }
         $requisition->save();
 
         AuditService::log('purchase', $requisition->pr_number, 'reject_pr', null, ['reason' => $request->input('reason')], 'Rejected PR');

@@ -14,6 +14,16 @@ class Customer extends Model
         'credit_limit' => 'decimal:2',
     ];
 
+    public function getCustomerCodeAttribute()
+    {
+        return $this->attributes['code'] ?? null;
+    }
+
+    public function setCustomerCodeAttribute($value)
+    {
+        $this->attributes['code'] = $value;
+    }
+
     public function salesOrders()
     {
         return $this->hasMany(SalesOrder::class);

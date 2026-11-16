@@ -46,8 +46,28 @@ class Uom extends Model
         $this->attributes['uom_code'] = $value;
     }
 
+    public function getDecimalPlacesAttribute()
+    {
+        return $this->attributes['decimal_precision'] ?? 2;
+    }
+
+    public function setDecimalPlacesAttribute($value)
+    {
+        $this->attributes['decimal_precision'] = $value;
+    }
+
     public function baseUom()
     {
         return $this->belongsTo(Uom::class, 'base_uom_id');
+    }
+
+    public function products()
+    {
+        return $this->hasMany(Product::class, 'base_uom_id');
+    }
+
+    public function materials()
+    {
+        return $this->hasMany(Material::class, 'base_uom_id');
     }
 }

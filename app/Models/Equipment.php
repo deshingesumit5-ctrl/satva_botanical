@@ -33,4 +33,19 @@ class Equipment extends Model
     {
         return $this->belongsTo(Uom::class, 'capacity_uom_id');
     }
+
+    public function recipeEquipments()
+    {
+        return $this->hasMany(RecipeEquipment::class);
+    }
+
+    public function getEquipmentTypeAttribute()
+    {
+        return $this->attributes['category'] ?? null;
+    }
+
+    public function setEquipmentTypeAttribute($value)
+    {
+        $this->attributes['category'] = $value;
+    }
 }

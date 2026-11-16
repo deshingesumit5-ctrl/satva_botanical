@@ -24,4 +24,14 @@ class Warehouse extends Model
     {
         return $this->hasMany(StockLot::class);
     }
+
+    public function getWarehouseTypeAttribute()
+    {
+        return $this->attributes['type'] ?? null;
+    }
+
+    public function setWarehouseTypeAttribute($value)
+    {
+        $this->attributes['type'] = $value;
+    }
 }

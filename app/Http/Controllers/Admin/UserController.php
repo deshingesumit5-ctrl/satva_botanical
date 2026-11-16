@@ -138,11 +138,15 @@ class UserController extends Controller
             return back()->with('error', "Super Admin account cannot be deleted.");
         }
 
-        $userCode = $user->user_id;
-        $user->delete();
-        AuditService::log('admin', $userCode, 'delete_user', null, null, 'Deleted user account');
+        try {
+            $userCode = $user->user_id;
+            $user->delete();
+            AuditService::log('admin', $userCode, 'delete_user', null, null, 'Deleted user account');
 
-        return redirect()->route('admin.users.index')->with('success', "User account deleted.");
+            return redirect()->route('admin.users.index')->with('success', "User account deleted.");
+        } catch (\Illuminate\Database\QueryException $e) {
+            return back()->with('error', "This record is already used and cannot be deleted. You can deactivate it.");
+        }
     }
 
     public function toggleStatus(User $user)

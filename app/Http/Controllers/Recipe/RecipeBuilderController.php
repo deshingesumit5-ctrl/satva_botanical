@@ -255,18 +255,20 @@ class RecipeBuilderController extends Controller
                             $direction = $m['direction'] ?? 'input';
                             $matId = !empty($m['material_id']) ? $m['material_id'] : null;
                             $prodId = !empty($m['product_id']) ? $m['product_id'] : null;
+                            $stdQty = (float)($m['standard_qty'] ?? 0);
+                            $outType = $m['output_type'] ?? ($direction === 'output' ? 'WIP' : null);
 
-                            if ($matId || $prodId || !empty($m['output_type'])) {
+                            if ($matId || $prodId || !empty($outType) || $stdQty > 0) {
                                 RecipeMaterial::create([
                                     'recipe_stage_id' => $stage->id,
                                     'direction' => $direction,
                                     'material_id' => $matId,
                                     'product_id' => $prodId,
-                                    'material_category' => $m['material_category'] ?? null,
-                                    'standard_qty' => (float)($m['standard_qty'] ?? 0),
+                                    'material_category' => $m['material_category'] ?? ($direction === 'output' ? 'WIP' : 'Raw'),
+                                    'standard_qty' => $stdQty,
                                     'uom_id' => $m['uom_id'] ?? $version->batch_uom_id,
-                                    'output_type' => $m['output_type'] ?? null,
-                                    'is_mandatory' => isset($m['is_mandatory']),
+                                    'output_type' => $outType,
+                                    'is_mandatory' => isset($m['is_mandatory']) ? true : true,
                                     'is_reusable' => isset($m['is_reusable']),
                                     'is_saleable' => isset($m['is_saleable']),
                                     'destination_warehouse_id' => !empty($m['warehouse_id']) ? $m['warehouse_id'] : null,

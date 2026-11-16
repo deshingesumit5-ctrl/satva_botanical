@@ -16,7 +16,7 @@ class UomController extends Controller
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('uom_name', 'like', "%{$search}%")
-                  ->orWhere('uom_code', 'like', "%{$search}%");
+                    ->orWhere('uom_code', 'like', "%{$search}%");
             });
         }
 
@@ -37,6 +37,26 @@ class UomController extends Controller
 
     public function store(Request $request)
     {
+        if ($request->has('name') && !$request->has('uom_name')) {
+            $request->merge(['uom_name' => $request->input('name')]);
+        }
+        if ($request->has('symbol') && !$request->has('uom_code')) {
+            $request->merge(['uom_code' => $request->input('symbol')]);
+        }
+        if ($request->has('code') && !$request->has('uom_code')) {
+            $request->merge(['uom_code' => $request->input('code')]);
+        }
+        if ($request->has('decimal_places') && !$request->has('decimal_precision')) {
+            $request->merge(['decimal_precision' => (int) $request->input('decimal_places')]);
+        }
+        if (!$request->has('category')) {
+            $request->merge(['category' => 'Count']);
+        }
+        if (!$request->has('decimal_precision')) {
+            $request->merge(['decimal_precision' => 2]);
+        }
+        $request->merge(['is_stock_unit' => $request->boolean('is_stock_unit', true)]);
+
         $validated = $request->validate([
             'uom_code' => 'required|string|max:30|unique:uoms,uom_code',
             'uom_name' => 'required|string|max:100',
@@ -65,6 +85,26 @@ class UomController extends Controller
 
     public function update(Request $request, Uom $uom)
     {
+        if ($request->has('name') && !$request->has('uom_name')) {
+            $request->merge(['uom_name' => $request->input('name')]);
+        }
+        if ($request->has('symbol') && !$request->has('uom_code')) {
+            $request->merge(['uom_code' => $request->input('symbol')]);
+        }
+        if ($request->has('code') && !$request->has('uom_code')) {
+            $request->merge(['uom_code' => $request->input('code')]);
+        }
+        if ($request->has('decimal_places') && !$request->has('decimal_precision')) {
+            $request->merge(['decimal_precision' => (int) $request->input('decimal_places')]);
+        }
+        if (!$request->has('category')) {
+            $request->merge(['category' => $uom->category ?? 'Count']);
+        }
+        if (!$request->has('decimal_precision')) {
+            $request->merge(['decimal_precision' => $uom->decimal_precision ?? 2]);
+        }
+        $request->merge(['is_stock_unit' => $request->boolean('is_stock_unit', $uom->is_stock_unit)]);
+
         $validated = $request->validate([
             'uom_name' => 'required|string|max:100',
             'category' => 'required|in:Weight,Volume,Count,Time,Measurement',
@@ -85,14 +125,18 @@ class UomController extends Controller
     public function destroy(Uom $uom)
     {
         if ($uom->products()->exists() || $uom->materials()->exists()) {
-            return back()->with('error', "Cannot delete UOM '{$uom->uom_name}' as it is in use by products or materials. You can deactivate it instead.");
+            return back()->with('error', "This record is already used and cannot be deleted. You can deactivate it.");
         }
 
-        $old = $uom->toArray();
-        $uom->delete();
-        AuditService::log('masters', $uom->uom_code, 'delete', $old, null, 'Deleted UOM');
+        try {
+            $old = $uom->toArray();
+            $uom->delete();
+            AuditService::log('masters', $uom->uom_code, 'delete', $old, null, 'Deleted UOM');
 
-        return redirect()->route('masters.uoms.index')->with('success', "UOM deleted successfully.");
+            return redirect()->route('masters.uoms.index')->with('success', "UOM deleted successfully.");
+        } catch (\Illuminate\Database\QueryException $e) {
+            return back()->with('error', "This record is already used and cannot be deleted. You can deactivate it.");
+        }
     }
 
     public function toggleStatus(Uom $uom)

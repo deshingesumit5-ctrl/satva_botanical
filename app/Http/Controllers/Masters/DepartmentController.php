@@ -35,6 +35,10 @@ class DepartmentController extends Controller
 
     public function store(Request $request)
     {
+        if ($request->has('head_of_department') && !$request->has('department_head')) {
+            $request->merge(['department_head' => $request->input('head_of_department')]);
+        }
+
         $validated = $request->validate([
             'code' => 'required|string|max:30|unique:departments,code',
             'name' => 'required|string|max:100',
@@ -66,6 +70,10 @@ class DepartmentController extends Controller
 
     public function update(Request $request, Department $department)
     {
+        if ($request->has('head_of_department') && !$request->has('department_head')) {
+            $request->merge(['department_head' => $request->input('head_of_department')]);
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:100',
             'plant_id' => 'nullable|exists:plants,id',
@@ -89,14 +97,18 @@ class DepartmentController extends Controller
     public function destroy(Department $department)
     {
         if ($department->users()->exists()) {
-            return back()->with('error', "Cannot delete department '{$department->name}' as it is assigned to users. You can deactivate it instead.");
+            return back()->with('error', "This record is already used and cannot be deleted. You can deactivate it.");
         }
 
-        $old = $department->toArray();
-        $department->delete();
-        AuditService::log('masters', $department->code, 'delete', $old, null, 'Deleted department');
+        try {
+            $old = $department->toArray();
+            $department->delete();
+            AuditService::log('masters', $department->code, 'delete', $old, null, 'Deleted department');
 
-        return redirect()->route('masters.departments.index')->with('success', "Department deleted successfully.");
+            return redirect()->route('masters.departments.index')->with('success', "Department deleted successfully.");
+        } catch (\Illuminate\Database\QueryException $e) {
+            return back()->with('error', "This record is already used and cannot be deleted. You can deactivate it.");
+        }
     }
 
     public function toggleStatus(Department $department)

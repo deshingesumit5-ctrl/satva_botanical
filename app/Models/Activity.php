@@ -16,4 +16,9 @@ class Activity extends Model
         'operator_entry_required' => 'boolean',
         'default_duration' => 'integer',
     ];
+
+    public function recipeStageActivities()
+    {
+        return $this->hasMany(RecipeStageActivity::class);
+    }
 }

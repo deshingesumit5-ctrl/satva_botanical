@@ -19,4 +19,9 @@ class Plant extends Model
     {
         return $this->hasMany(Warehouse::class);
     }
+
+    public function users()
+    {
+        return $this->hasMany(User::class);
+    }
 }

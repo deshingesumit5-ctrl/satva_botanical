@@ -48,6 +48,31 @@ class MaterialController extends Controller
 
     public function store(Request $request)
     {
+        if ($request->has('storage_conditions') && !$request->has('storage_condition')) {
+            $request->merge(['storage_condition' => $request->input('storage_conditions')]);
+        }
+
+        if (!$request->filled('material_category') && $request->filled('material_type')) {
+            $catMap = [
+                'Raw Material' => ['category' => 'Raw', 'type' => 'Solid'],
+                'Solvent' => ['category' => 'Solvent', 'type' => 'Liquid'],
+                'Packaging' => ['category' => 'Packing', 'type' => 'Solid'],
+                'Chemical' => ['category' => 'Chemical', 'type' => 'Solid'],
+                'Consumable' => ['category' => 'Consumable', 'type' => 'Solid'],
+                'Water' => ['category' => 'Water', 'type' => 'Liquid'],
+            ];
+            $typeInput = $request->input('material_type');
+            if (isset($catMap[$typeInput])) {
+                $request->merge([
+                    'material_category' => $catMap[$typeInput]['category'],
+                    'material_type' => $catMap[$typeInput]['type'],
+                ]);
+            }
+        }
+        if (!$request->filled('material_type') && $request->filled('material_category')) {
+            $request->merge(['material_type' => 'Solid']);
+        }
+
         $validated = $request->validate([
             'material_code' => 'required|string|max:30|unique:materials,material_code',
             'name' => 'required|string|max:150',
@@ -87,6 +112,31 @@ class MaterialController extends Controller
 
     public function update(Request $request, Material $material)
     {
+        if ($request->has('storage_conditions') && !$request->has('storage_condition')) {
+            $request->merge(['storage_condition' => $request->input('storage_conditions')]);
+        }
+
+        if (!$request->filled('material_category') && $request->filled('material_type')) {
+            $catMap = [
+                'Raw Material' => ['category' => 'Raw', 'type' => 'Solid'],
+                'Solvent' => ['category' => 'Solvent', 'type' => 'Liquid'],
+                'Packaging' => ['category' => 'Packing', 'type' => 'Solid'],
+                'Chemical' => ['category' => 'Chemical', 'type' => 'Solid'],
+                'Consumable' => ['category' => 'Consumable', 'type' => 'Solid'],
+                'Water' => ['category' => 'Water', 'type' => 'Liquid'],
+            ];
+            $typeInput = $request->input('material_type');
+            if (isset($catMap[$typeInput])) {
+                $request->merge([
+                    'material_category' => $catMap[$typeInput]['category'],
+                    'material_type' => $catMap[$typeInput]['type'],
+                ]);
+            }
+        }
+        if (!$request->filled('material_type') && $request->filled('material_category')) {
+            $request->merge(['material_type' => $material->material_type ?? 'Solid']);
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:150',
             'material_category' => 'required|in:Raw,Chemical,Solvent,Water,Consumable,Packing',
@@ -115,14 +165,18 @@ class MaterialController extends Controller
     public function destroy(Material $material)
     {
         if ($material->stockLots()->exists() || $material->purchaseOrderItems()->exists()) {
-            return back()->with('error', "Cannot delete material '{$material->name}' because it has stock lots or purchase orders linked. You can deactivate it instead.");
+            return back()->with('error', "This record is already used and cannot be deleted. You can deactivate it.");
         }
 
-        $old = $material->toArray();
-        $material->delete();
-        AuditService::log('masters', $material->material_code, 'delete', $old, null, 'Deleted material');
+        try {
+            $old = $material->toArray();
+            $material->delete();
+            AuditService::log('masters', $material->material_code, 'delete', $old, null, 'Deleted material');
 
-        return redirect()->route('masters.materials.index')->with('success', "Material deleted successfully.");
+            return redirect()->route('masters.materials.index')->with('success', "Material deleted successfully.");
+        } catch (\Illuminate\Database\QueryException $e) {
+            return back()->with('error', "This record is already used and cannot be deleted. You can deactivate it.");
+        }
     }
 
     public function toggleStatus(Material $material)

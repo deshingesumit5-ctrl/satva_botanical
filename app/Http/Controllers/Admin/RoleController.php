@@ -28,6 +28,13 @@ class RoleController extends Controller
 
     public function store(Request $request)
     {
+        if ($request->has('name') && !$request->has('role_name')) {
+            $request->merge(['role_name' => $request->input('name')]);
+        }
+        if ($request->has('code') && !$request->has('role_code')) {
+            $request->merge(['role_code' => $request->input('code')]);
+        }
+
         $validated = $request->validate([
             'role_name' => 'required|string|max:100|unique:roles,role_name',
             'role_code' => 'nullable|string|max:50|unique:roles,role_code',
@@ -55,8 +62,16 @@ class RoleController extends Controller
 
     public function update(Request $request, Role $role)
     {
+        if ($request->has('name') && !$request->has('role_name')) {
+            $request->merge(['role_name' => $request->input('name')]);
+        }
+        if ($request->has('code') && !$request->has('role_code')) {
+            $request->merge(['role_code' => $request->input('code')]);
+        }
+
         $validated = $request->validate([
-            'role_name' => 'required|string|max:100',
+            'role_name' => ['required', 'string', 'max:100', \Illuminate\Validation\Rule::unique('roles', 'role_name')->ignore($role->id)],
+            'role_code' => ['nullable', 'string', 'max:50', \Illuminate\Validation\Rule::unique('roles', 'role_code')->ignore($role->id)],
             'description' => 'nullable|string',
             'status' => 'required|in:Active,Inactive',
         ]);
@@ -70,19 +85,25 @@ class RoleController extends Controller
 
     public function destroy(Role $role)
     {
-        if ($role->role_code === 'super_admin') {
+        if ($role->role_code === 'super_admin' || $role->role_code === 'Super Admin') {
             return back()->with('error', "Super Admin role cannot be deleted.");
         }
 
         if ($role->users()->exists()) {
-            return back()->with('error', "Cannot delete role '{$role->role_name}' because users are currently assigned to it.");
+            return back()->with('error', "This record is already used and cannot be deleted. You can deactivate it.");
         }
 
-        $code = $role->role_code;
-        $role->delete();
-        AuditService::log('admin', $code, 'delete_role', null, null, 'Deleted role');
+        try {
+            $code = $role->role_code;
+            $old = $role->toArray();
+            $role->permissions()->detach();
+            $role->delete();
+            AuditService::log('admin', $code, 'delete_role', $old, null, 'Deleted role');
 
-        return redirect()->route('admin.roles.index')->with('success', "Role deleted successfully.");
+            return redirect()->route('admin.roles.index')->with('success', "Role deleted successfully.");
+        } catch (\Illuminate\Database\QueryException $e) {
+            return back()->with('error', "This record is already used and cannot be deleted. You can deactivate it.");
+        }
     }
 
     public function create()

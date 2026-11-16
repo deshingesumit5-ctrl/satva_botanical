@@ -14,4 +14,24 @@ class StorageLocation extends Model
     {
         return $this->belongsTo(Warehouse::class);
     }
+
+    public function stockLots()
+    {
+        return $this->hasMany(StockLot::class);
+    }
+
+    public function getCodeAttribute()
+    {
+        return $this->attributes['location_code'] ?? null;
+    }
+
+    public function setCodeAttribute($value)
+    {
+        $this->attributes['location_code'] = $value;
+    }
+
+    public function getZoneAttribute()
+    {
+        return trim(($this->rack_no ?? '') . ' ' . ($this->bin_no ?? '')) ?: null;
+    }
 }

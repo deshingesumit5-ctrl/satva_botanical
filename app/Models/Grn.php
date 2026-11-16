@@ -47,4 +47,24 @@ class Grn extends Model
     {
         return $this->hasMany(StockLot::class, 'grn_id');
     }
+
+    public function getGrnDateAttribute()
+    {
+        return $this->attributes['receipt_date'] ?? null;
+    }
+
+    public function setGrnDateAttribute($value)
+    {
+        $this->attributes['receipt_date'] = $value;
+    }
+
+    public function getVehicleNumberAttribute()
+    {
+        return $this->attributes['vehicle_number'] ?? null;
+    }
+
+    public function getGatePassNumberAttribute()
+    {
+        return $this->attributes['gate_pass_number'] ?? null;
+    }
 }

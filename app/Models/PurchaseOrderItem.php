@@ -38,4 +38,44 @@ class PurchaseOrderItem extends Model
     {
         return max(0, (float)$this->quantity - (float)$this->received_qty);
     }
+
+    public function getOrderedQtyAttribute()
+    {
+        return $this->attributes['quantity'] ?? null;
+    }
+
+    public function setOrderedQtyAttribute($value)
+    {
+        $this->attributes['quantity'] = $value;
+    }
+
+    public function getReceivedQuantityAttribute()
+    {
+        return $this->attributes['received_qty'] ?? 0;
+    }
+
+    public function setReceivedQuantityAttribute($value)
+    {
+        $this->attributes['received_qty'] = $value;
+    }
+
+    public function getUnitPriceAttribute()
+    {
+        return $this->attributes['rate'] ?? 0;
+    }
+
+    public function setUnitPriceAttribute($value)
+    {
+        $this->attributes['rate'] = $value;
+    }
+
+    public function getTaxPercentAttribute()
+    {
+        return $this->attributes['gst_rate'] ?? 0;
+    }
+
+    public function setTaxPercentAttribute($value)
+    {
+        $this->attributes['gst_rate'] = $value;
+    }
 }

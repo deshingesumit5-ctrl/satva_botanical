@@ -15,31 +15,39 @@
             <form action="{{ route('purchase.requisitions.store') }}" method="POST">
                 @csrf
                 <div class="row g-3 mb-4">
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label class="form-label required">Plant Facility</label>
                         <select name="plant_id" class="form-select" required>
                             @foreach($plants as $p)
-                                <option value="{{ $p->id }}">{{ $p->name }}</option>
+                                <option value="{{ $p->id }}" {{ old('plant_id') == $p->id ? 'selected' : '' }}>{{ $p->name }}</option>
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label class="form-label required">Requesting Department</label>
                         <select name="department_id" class="form-select" required>
                             @foreach($departments as $d)
-                                <option value="{{ $d->id }}">{{ $d->name }}</option>
+                                <option value="{{ $d->id }}" {{ old('department_id') == $d->id ? 'selected' : '' }}>{{ $d->name }}</option>
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label class="form-label required">Required By Date</label>
-                        <input type="date" name="required_by_date" class="form-control" required value="{{ date('Y-m-d', strtotime('+7 days')) }}">
+                        <input type="date" name="required_by_date" class="form-control" required value="{{ old('required_by_date', date('Y-m-d', strtotime('+7 days'))) }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label required">Priority</label>
+                        <select name="priority" class="form-select" required>
+                            @foreach(['Low', 'Medium', 'High', 'Urgent'] as $prio)
+                                <option value="{{ $prio }}" {{ old('priority', 'Medium') === $prio ? 'selected' : '' }}>{{ $prio }}</option>
+                            @endforeach
+                        </select>
                     </div>
                 </div>
 
                 <div class="mb-4">
                     <label class="form-label">Purpose / Remarks</label>
-                    <textarea name="remarks" class="form-control" rows="2" placeholder="Explain requisition requirement, e.g. Upcoming Garcinia extract production batch..."></textarea>
+                    <textarea name="remarks" class="form-control" rows="2" placeholder="Explain requisition requirement, e.g. Upcoming Garcinia extract production batch...">{{ old('remarks') }}</textarea>
                 </div>
 
                 <h6 class="fw-bold mb-3 d-flex justify-content-between align-items-center">

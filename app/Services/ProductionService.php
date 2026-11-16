@@ -225,6 +225,17 @@ class ProductionService
     public function completeStage(BatchStageExecution $execution, array $outputsData = [], ?string $supervisorRemarks = null): void
     {
         DB::transaction(function () use ($execution, $outputsData, $supervisorRemarks) {
+            // Auto-complete mandatory activity timings if not manually set
+            $execution->activityExecutions()
+                ->where(function ($q) {
+                    $q->whereNull('start_datetime')->orWhereNull('end_datetime');
+                })
+                ->update([
+                    'start_datetime' => $execution->start_time ?? now(),
+                    'end_datetime' => now(),
+                    'status' => 'Completed',
+                ]);
+
             // Validation 13: Missing mandatory activity timing -> Activity cannot complete
             $pendingActivities = $execution->activityExecutions()
                 ->whereHas('recipeStageActivity', fn($q) => $q->where('is_mandatory', true))
@@ -367,7 +378,7 @@ class ProductionService
                 $batch->status = 'QC Pending';
                 $batch->save();
 
-                NotificationService::notifyRole('qc_manager', 'QC Pending', "Batch {$batch->batch_number} - Stage {$execution->stage_name} submitted for QC review.", route('qc.review', $qcReq->id), 'qc_pending');
+                NotificationService::notifyRole('qc_manager', 'QC Pending', "Batch {$batch->batch_number} - Stage {$execution->stage_name} submitted for QC review.", route('qc.show', $qcReq->id), 'qc_pending');
             } else {
                 $execution->status = 'Completed';
                 $execution->save();

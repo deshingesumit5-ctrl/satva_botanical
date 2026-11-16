@@ -17,8 +17,8 @@ class WarehouseController extends Controller
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('code', 'like', "%{$search}%")
-                  ->orWhere('type', 'like', "%{$search}%");
+                    ->orWhere('code', 'like', "%{$search}%")
+                    ->orWhere('type', 'like', "%{$search}%");
             });
         }
 
@@ -39,6 +39,15 @@ class WarehouseController extends Controller
 
     public function store(Request $request)
     {
+        if ($request->has('warehouse_type') && !$request->has('type')) {
+            $wt = $request->input('warehouse_type');
+            if (in_array($wt, ['Packaging', 'General']))
+                $wt = 'Raw Material';
+            elseif ($wt === 'Solvent / Flammable')
+                $wt = 'Chemical';
+            $request->merge(['type' => $wt]);
+        }
+
         $validated = $request->validate([
             'code' => 'required|string|max:30|unique:warehouses,code',
             'name' => 'required|string|max:100',
@@ -66,6 +75,15 @@ class WarehouseController extends Controller
 
     public function update(Request $request, Warehouse $warehouse)
     {
+        if ($request->has('warehouse_type') && !$request->has('type')) {
+            $wt = $request->input('warehouse_type');
+            if (in_array($wt, ['Packaging', 'General']))
+                $wt = 'Raw Material';
+            elseif ($wt === 'Solvent / Flammable')
+                $wt = 'Chemical';
+            $request->merge(['type' => $wt]);
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:100',
             'type' => 'required|in:Raw Material,Chemical,WIP,Finished Goods,Recovery,Waste,Rejected',
@@ -85,14 +103,18 @@ class WarehouseController extends Controller
     public function destroy(Warehouse $warehouse)
     {
         if ($warehouse->storageLocations()->exists() || $warehouse->stockLots()->exists()) {
-            return back()->with('error', "Cannot delete warehouse '{$warehouse->name}' because it contains storage locations or stock lots. You can deactivate it instead.");
+            return back()->with('error', "This record is already used and cannot be deleted. You can deactivate it.");
         }
 
-        $old = $warehouse->toArray();
-        $warehouse->delete();
-        AuditService::log('masters', $warehouse->code, 'delete', $old, null, 'Deleted warehouse');
+        try {
+            $old = $warehouse->toArray();
+            $warehouse->delete();
+            AuditService::log('masters', $warehouse->code, 'delete', $old, null, 'Deleted warehouse');
 
-        return redirect()->route('masters.warehouses.index')->with('success', "Warehouse deleted successfully.");
+            return redirect()->route('masters.warehouses.index')->with('success', "Warehouse deleted successfully.");
+        } catch (\Illuminate\Database\QueryException $e) {
+            return back()->with('error', "This record is already used and cannot be deleted. You can deactivate it.");
+        }
     }
 
     public function toggleStatus(Warehouse $warehouse)

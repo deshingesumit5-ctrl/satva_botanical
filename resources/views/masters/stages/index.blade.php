@@ -1,35 +1,38 @@
 @extends('layouts.app')
 @section('title', 'Stage Master')
 @section('content')
-<div class="container-fluid px-0">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h2 class="page-title">Manufacturing Stage Master</h2>
-            <p class="page-subtitle">Configure generic process stages (Extraction, Distillation, Crystallization, etc.).</p>
+    <div class="container-fluid px-0">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2 class="page-title">Manufacturing Stage Master</h2>
+                <p class="page-subtitle">Configure generic process stages (Extraction, Distillation, Crystallization, etc.).
+                </p>
+            </div>
+            <button type="button" class="btn btn-primary-sattva" data-bs-toggle="modal" data-bs-target="#addStageModal">
+                <i class="bi bi-plus-lg me-1"></i> Add Stage
+            </button>
         </div>
-        <button type="button" class="btn btn-primary-sattva" data-bs-toggle="modal" data-bs-target="#addStageModal">
-            <i class="bi bi-plus-lg me-1"></i> Add Stage
-        </button>
-    </div>
 
-    <div class="card card-sattva mb-4">
-        <div class="card-sattva-body p-3">
-            <form action="{{ route('masters.stages.index') }}" method="GET" class="row g-2 align-items-center">
-                <div class="col-md-6"><input type="text" name="search" value="{{ request('search') }}" class="form-control" placeholder="Search stage name, code..."></div>
-                <div class="col-md-3">
-                    <select name="status" class="form-select">
-                        <option value="">All Status</option>
-                        <option value="Active" {{ request('status') === 'Active' ? 'selected' : '' }}>Active</option>
-                        <option value="Inactive" {{ request('status') === 'Inactive' ? 'selected' : '' }}>Inactive</option>
-                    </select>
-                </div>
-                <div class="col-md-3 d-flex gap-2">
-                    <button type="submit" class="btn btn-dark-filter flex-grow-1">Filter</button>
-                    <a href="{{ route('masters.stages.index') }}" class="btn btn-outline-secondary">Reset</a>
-                </div>
-            </form>
+        <div class="card card-sattva mb-4">
+            <div class="card-sattva-body p-3">
+                <form action="{{ route('masters.stages.index') }}" method="GET" class="row g-2 align-items-center">
+                    <div class="col-md-6"><input type="text" name="search" value="{{ request('search') }}"
+                            class="form-control" placeholder="Search stage name, code..."></div>
+                    <div class="col-md-3">
+                        <select name="status" class="form-select">
+                            <option value="">All Status</option>
+                            <option value="Active" {{ request('status') === 'Active' ? 'selected' : '' }}>Active</option>
+                            <option value="Inactive" {{ request('status') === 'Inactive' ? 'selected' : '' }}>Inactive
+                            </option>
+                        </select>
+                    </div>
+                    <div class="col-md-3 d-flex gap-2">
+                        <button type="submit" class="btn btn-dark-filter flex-grow-1">Filter</button>
+                        <a href="{{ route('masters.stages.index') }}" class="btn btn-outline-secondary">Reset</a>
+                    </div>
+                </form>
+            </div>
         </div>
-    </div>
 
     <div class="card card-sattva">
         <div class="table-responsive">
@@ -79,10 +82,7 @@
                         </td>
                         <td class="text-end">
                             <a href="{{ route('masters.stages.edit', $stage) }}" class="btn btn-sm btn-icon btn-outline-primary me-1"><i class="bi bi-pencil"></i></a>
-                            <form action="{{ route('masters.stages.destroy', $stage) }}" method="POST" class="d-inline">
-                                @csrf @method('DELETE')
-                                <button type="button" class="btn btn-sm btn-icon btn-outline-danger" onclick="confirmDelete('Do you want to delete this Stage?', '{{ $stage->name }}', this.closest('form'))"><i class="bi bi-trash"></i></button>
-                            </form>
+                            <button type="button" class="btn btn-sm btn-icon btn-action-delete" data-url="{{ route('masters.stages.destroy', $stage) }}" data-name="{{ $stage->stage_name ?? $stage->name }}" title="Delete"><i class="bi bi-trash"></i></button>
                         </td>
                     </tr>
                     @empty
@@ -91,65 +91,59 @@
                 </tbody>
             </table>
         </div>
-        @if($stages->hasPages())
-        <div class="card-footer bg-white d-flex justify-content-between align-items-center py-2">
-            <span class="text-muted small">Showing {{ $stages->firstItem() }} to {{ $stages->lastItem() }} of {{ $stages->total() }}</span>
-            {{ $stages->links() }}
-        </div>
-        @endif
     </div>
-</div>
 
-<div class="modal fade" id="addStageModal" tabindex="-1">
-    <div class="modal-dialog">
-        <form action="{{ route('masters.stages.store') }}" method="POST" class="modal-content">
-            @csrf
-            <div class="modal-header">
-                <h5 class="modal-title fw-bold">Add Manufacturing Stage</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="mb-3">
-                    <label class="form-label required">Stage Name</label>
-                    <input type="text" name="name" class="form-control" required placeholder="e.g. Extraction">
+    <div class="modal fade" id="addStageModal" tabindex="-1">
+        <div class="modal-dialog">
+            <form action="{{ route('masters.stages.store') }}" method="POST" class="modal-content">
+                @csrf
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">Add Manufacturing Stage</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="row g-2 mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label">Stage Code</label>
-                        <input type="text" name="code" class="form-control" placeholder="Auto-generated if blank">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label required">Stage Name</label>
+                        <input type="text" name="name" class="form-control" required placeholder="e.g. Extraction">
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Default Sequence</label>
-                        <input type="number" name="default_sequence" class="form-control" value="1" min="1">
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Stage Code</label>
+                            <input type="text" name="code" class="form-control" placeholder="Auto-generated if blank">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Default Sequence</label>
+                            <input type="number" name="default_sequence" class="form-control" value="1" min="1">
+                        </div>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Standard Duration (Hrs)</label>
+                            <input type="number" step="0.1" name="standard_duration_hours" class="form-control"
+                                placeholder="e.g. 8.0">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Status</label>
+                            <select name="status" class="form-select">
+                                <option value="Active">Active</option>
+                                <option value="Inactive">Inactive</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input" type="checkbox" name="recovery_applicable" value="1" id="recApp">
+                        <label class="form-check-label" for="recApp">Solvent Recovery Applicable</label>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" name="qc_mandatory_on_exit" value="1" id="qcMand">
+                        <label class="form-check-label" for="qcMand">QC Inspection Mandatory On Stage Exit</label>
                     </div>
                 </div>
-                <div class="row g-2 mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label">Standard Duration (Hrs)</label>
-                        <input type="number" step="0.1" name="standard_duration_hours" class="form-control" placeholder="e.g. 8.0">
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Status</label>
-                        <select name="status" class="form-select">
-                            <option value="Active">Active</option>
-                            <option value="Inactive">Inactive</option>
-                        </select>
-                    </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary-sattva">Save Stage</button>
                 </div>
-                <div class="form-check form-switch mb-2">
-                    <input class="form-check-input" type="checkbox" name="recovery_applicable" value="1" id="recApp">
-                    <label class="form-check-label" for="recApp">Solvent Recovery Applicable</label>
-                </div>
-                <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" name="qc_mandatory_on_exit" value="1" id="qcMand">
-                    <label class="form-check-label" for="qcMand">QC Inspection Mandatory On Stage Exit</label>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="submit" class="btn btn-primary-sattva">Save Stage</button>
-            </div>
-        </form>
+            </form>
+        </div>
     </div>
-</div>
 @endsection

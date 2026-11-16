@@ -30,9 +30,9 @@ class SalesOrderController extends Controller
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('order_number', 'like', "%{$search}%")
-                  ->orWhereHas('customer', function ($cq) use ($search) {
-                      $cq->where('name', 'like', "%{$search}%");
-                  });
+                    ->orWhereHas('customer', function ($cq) use ($search) {
+                        $cq->where('name', 'like', "%{$search}%");
+                    });
             });
         }
 
@@ -221,13 +221,17 @@ class SalesOrderController extends Controller
             return back()->with('error', 'Only Draft orders can be deleted.');
         }
 
-        $num = $order->order_number;
-        $order->items()->delete();
-        $order->delete();
+        try {
+            $num = $order->order_number;
+            $order->items()->delete();
+            $order->delete();
 
-        AuditService::log('sales', $num, 'delete_sales_order', null, null, 'Deleted sales order');
+            AuditService::log('sales', $num, 'delete_sales_order', null, null, 'Deleted sales order');
 
-        return redirect()->route('sales.orders.index')->with('success', 'Sales Order deleted.');
+            return redirect()->route('sales.orders.index')->with('success', 'Sales Order deleted.');
+        } catch (\Illuminate\Database\QueryException $e) {
+            return back()->with('error', 'This record is already used and cannot be deleted. You can deactivate it.');
+        }
     }
 
     public function approve(SalesOrder $order)

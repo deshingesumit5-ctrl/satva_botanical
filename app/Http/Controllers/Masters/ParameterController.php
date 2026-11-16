@@ -37,6 +37,13 @@ class ParameterController extends Controller
 
     public function store(Request $request)
     {
+        if ($request->has('default_uom') && !$request->has('uom')) {
+            $request->merge(['uom' => $request->default_uom]);
+        }
+        if ($request->parameter_type === 'Choice') {
+            $request->merge(['parameter_type' => 'Dropdown']);
+        }
+
         $validated = $request->validate([
             'code' => 'required|string|max:30|unique:parameters,code',
             'name' => 'required|string|max:100',
@@ -68,6 +75,13 @@ class ParameterController extends Controller
 
     public function update(Request $request, Parameter $parameter)
     {
+        if ($request->has('default_uom') && !$request->has('uom')) {
+            $request->merge(['uom' => $request->default_uom]);
+        }
+        if ($request->parameter_type === 'Choice') {
+            $request->merge(['parameter_type' => 'Dropdown']);
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:100',
             'parameter_type' => 'required|in:Numeric,Text,Dropdown,Boolean',
@@ -92,14 +106,18 @@ class ParameterController extends Controller
     public function destroy(Parameter $parameter)
     {
         if ($parameter->recipeParameters()->exists()) {
-            return back()->with('error', "Cannot delete parameter '{$parameter->name}' as it is mapped in recipes. You can deactivate it instead.");
+            return back()->with('error', "This record is already used and cannot be deleted. You can deactivate it.");
         }
 
-        $old = $parameter->toArray();
-        $parameter->delete();
-        AuditService::log('masters', $parameter->code, 'delete', $old, null, 'Deleted parameter');
+        try {
+            $old = $parameter->toArray();
+            $parameter->delete();
+            AuditService::log('masters', $parameter->code, 'delete', $old, null, 'Deleted parameter');
 
-        return redirect()->route('masters.parameters.index')->with('success', "Parameter deleted successfully.");
+            return redirect()->route('masters.parameters.index')->with('success', "Parameter deleted successfully.");
+        } catch (\Illuminate\Database\QueryException $e) {
+            return back()->with('error', "This record is already used and cannot be deleted. You can deactivate it.");
+        }
     }
 
     public function toggleStatus(Parameter $parameter)

@@ -31,10 +31,10 @@ class RecipeController extends Controller
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('recipe_code', 'like', "%{$search}%")
-                  ->orWhereHas('product', function ($pq) use ($search) {
-                      $pq->where('name', 'like', "%{$search}%");
-                  });
+                    ->orWhere('recipe_code', 'like', "%{$search}%")
+                    ->orWhereHas('product', function ($pq) use ($search) {
+                        $pq->where('name', 'like', "%{$search}%");
+                    });
             });
         }
 
@@ -226,7 +226,7 @@ class RecipeController extends Controller
 
         // Calculate next version number
         $parts = explode('.', str_replace('V', '', $currentVersion->version_number));
-        $major = (int)($parts[0] ?? 1) + 1;
+        $major = (int) ($parts[0] ?? 1) + 1;
         $newVersionNumber = "V{$major}.0";
 
         try {
@@ -264,12 +264,16 @@ class RecipeController extends Controller
     public function destroy(Recipe $recipe)
     {
         if ($recipe->batches()->exists() || $recipe->productionPlans()->exists()) {
-            return back()->with('error', 'This recipe is already used in production and cannot be deleted. You can deactivate it.');
+            return back()->with('error', 'This record is already used and cannot be deleted. You can deactivate it.');
         }
 
-        $recipe->delete();
-        AuditService::log('recipe', $recipe->id, 'delete', null, null, 'Deleted recipe ' . ($recipe->name ?? $recipe->recipe_name));
-        return redirect()->route('recipe.index')->with('success', 'Recipe deleted successfully.');
+        try {
+            $recipe->delete();
+            AuditService::log('recipe', $recipe->id, 'delete', null, null, 'Deleted recipe ' . ($recipe->name ?? $recipe->recipe_name));
+            return redirect()->route('recipe.index')->with('success', 'Recipe deleted successfully.');
+        } catch (\Illuminate\Database\QueryException $e) {
+            return back()->with('error', 'This record is already used and cannot be deleted. You can deactivate it.');
+        }
     }
 
     public function toggleStatus(Recipe $recipe)

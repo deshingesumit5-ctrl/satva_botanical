@@ -86,10 +86,7 @@
                         <td class="text-end">
                             <a href="{{ route('masters.materials.show', $mat) }}" class="btn btn-sm btn-icon btn-outline-secondary me-1"><i class="bi bi-eye"></i></a>
                             <a href="{{ route('masters.materials.edit', $mat) }}" class="btn btn-sm btn-icon btn-outline-primary me-1"><i class="bi bi-pencil"></i></a>
-                            <form action="{{ route('masters.materials.destroy', $mat) }}" method="POST" class="d-inline">
-                                @csrf @method('DELETE')
-                                <button type="button" class="btn btn-sm btn-icon btn-outline-danger" onclick="confirmDelete('Do you want to delete this Material?', '{{ $mat->name }}', this.closest('form'))"><i class="bi bi-trash"></i></button>
-                            </form>
+                            <button type="button" class="btn btn-sm btn-icon btn-action-delete" data-url="{{ route('masters.materials.destroy', $mat) }}" data-name="{{ $mat->name }}" title="Delete"><i class="bi bi-trash"></i></button>
                         </td>
                     </tr>
                     @empty
