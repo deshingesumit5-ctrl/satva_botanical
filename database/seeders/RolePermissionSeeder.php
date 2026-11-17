@@ -4,13 +4,15 @@ namespace Database\Seeders;
 
 use App\Models\Permission;
 use App\Models\Role;
+use App\Services\PermissionService;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
 
 class RolePermissionSeeder extends Seeder
 {
     public function run(): void
     {
+        PermissionService::ensurePermissionsExist();
+
         $permissions = Permission::all();
         $roles = Role::all()->keyBy('role_code');
 
@@ -24,7 +26,16 @@ class RolePermissionSeeder extends Seeder
             $superAdmin->permissions()->sync($syncData);
         }
 
-        // Production Supervisor gets production, inventory, qc view
+        // Plant Admin gets all operational permissions including Authorize Stage
+        if (isset($roles['plant_admin'])) {
+            $plantAdmin = $roles['plant_admin'];
+            $paIds = $permissions->filter(function ($p) {
+                return in_array($p->module, ['masters', 'recipe', 'purchase', 'inventory', 'production', 'qc', 'commercial', 'costing', 'reports']);
+            })->pluck('id');
+            $plantAdmin->permissions()->syncWithoutDetaching($paIds);
+        }
+
+        // Production Supervisor gets production (including Authorize Stage), inventory, qc view
         if (isset($roles['production_supervisor'])) {
             $pRole = $roles['production_supervisor'];
             $pIds = $permissions->filter(function ($p) {
@@ -33,7 +44,7 @@ class RolePermissionSeeder extends Seeder
                     ($p->module === 'qc' && $p->action === 'view') ||
                     ($p->module === 'recipe' && $p->action === 'view');
             })->pluck('id');
-            $pRole->permissions()->sync($pIds);
+            $pRole->permissions()->syncWithoutDetaching($pIds);
         }
 
         // Store Manager gets inventory, purchase grn, masters view
@@ -44,7 +55,7 @@ class RolePermissionSeeder extends Seeder
                     ($p->module === 'purchase' && in_array($p->screen, ['grn', 'requisitions'])) ||
                     ($p->module === 'masters' && $p->action === 'view');
             })->pluck('id');
-            $sRole->permissions()->sync($sIds);
+            $sRole->permissions()->syncWithoutDetaching($sIds);
         }
 
         // QC Manager gets qc module, masters view
@@ -55,7 +66,7 @@ class RolePermissionSeeder extends Seeder
                     ($p->module === 'production' && in_array($p->action, ['view', 'rework'])) ||
                     ($p->module === 'masters' && $p->screen === 'qc_tests');
             })->pluck('id');
-            $qcRole->permissions()->sync($qcIds);
+            $qcRole->permissions()->syncWithoutDetaching($qcIds);
         }
 
         // Recipe Admin gets recipe and process masters
@@ -65,7 +76,7 @@ class RolePermissionSeeder extends Seeder
                 return $p->module === 'recipe' ||
                     ($p->module === 'masters' && in_array($p->screen, ['stages', 'activities', 'parameters', 'equipments', 'qc_tests', 'products', 'materials']));
             })->pluck('id');
-            $rRole->permissions()->sync($rIds);
+            $rRole->permissions()->syncWithoutDetaching($rIds);
         }
     }
 }

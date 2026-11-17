@@ -42,13 +42,13 @@ class LoginController extends Controller
         $loginInput = $request->input('login');
         $field = filter_var($loginInput, FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
 
-        // Check if user exists and is active
-        $user = User::where($field, $loginInput)->first();
-        if ($user && $user->status !== 'Active') {
+        // Check if user exists and both user and assigned role are active
+        $user = User::with('role')->where($field, $loginInput)->first();
+        if ($user && !$user->isActive()) {
             RateLimiter::hit($throttleKey, 60);
             return back()->withInput()
-                ->with('error', 'Your account is inactive. Please contact your system administrator.')
-                ->withErrors(['login' => 'Your account is inactive. Please contact your system administrator.']);
+                ->with('error', 'Your account or assigned role is inactive. Please contact your system administrator.')
+                ->withErrors(['login' => 'Your account or assigned role is inactive. Please contact your system administrator.']);
         }
 
         $credentials = [

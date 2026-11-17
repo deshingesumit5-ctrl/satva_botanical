@@ -8,47 +8,62 @@ use App\Models\Role;
 use App\Services\AuditService;
 use App\Services\PermissionService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 
 class PermissionMatrixController extends Controller
 {
     public function index(Request $request)
     {
-        $roles = Role::where('status', 'Active')->get();
-        $selectedRoleId = $request->input('role_id', $roles->firstWhere('role_code', '!=', 'super_admin')->id ?? $roles->first()->id);
-        $selectedRole = Role::with('permissions')->find($selectedRoleId);
+        PermissionService::ensurePermissionsExist();
 
-        $matrix = PermissionService::getModuleMatrix();
-        $allPermissions = Permission::all()->keyBy('code');
+        $roles = Role::orderBy('id')->get();
+        $defaultRole = $roles->firstWhere('role_code', '!=', 'super_admin') ?? $roles->first();
+        $selectedRoleId = $request->input('role_id', $defaultRole?->id);
+        $selectedRole = $selectedRoleId ? Role::with('permissions')->find($selectedRoleId) : null;
 
-        $assignedPermissionCodes = $selectedRole ? $selectedRole->permissions->pluck('code')->toArray() : [];
+        $sections = PermissionService::getItemsBySection();
+        $actions = PermissionService::getActions();
 
-        return view('admin.permissions.index', compact('roles', 'selectedRole', 'matrix', 'allPermissions', 'assignedPermissionCodes'));
+        if ($selectedRole && in_array(strtolower((string) $selectedRole->role_code), ['super_admin', 'super admin'], true)) {
+            $assignedPermissionCodes = Permission::pluck('code')->toArray();
+        } else {
+            $assignedPermissionCodes = $selectedRole ? $selectedRole->permissions->pluck('code')->toArray() : [];
+        }
+
+        return view('admin.permissions.index', compact(
+            'roles',
+            'selectedRole',
+            'sections',
+            'actions',
+            'assignedPermissionCodes'
+        ));
     }
 
     public function save(Request $request)
     {
         $request->validate([
-            'role_id' => 'required|exists:roles,id',
+            'role_id'     => 'required|exists:roles,id',
             'permissions' => 'nullable|array',
         ]);
 
         $role = Role::findOrFail($request->role_id);
 
-        if ($role->role_code === 'super_admin') {
+        if (in_array(strtolower((string) $role->role_code), ['super_admin', 'super admin'], true)) {
             return back()->with('warning', 'Super Admin inherently possesses all system permissions.');
         }
 
         $permissionCodes = $request->input('permissions', []);
-        $permissionIds = Permission::whereIn('code', $permissionCodes)->pluck('id')->toArray();
+        PermissionService::syncRolePermissions($role, is_array($permissionCodes) ? $permissionCodes : []);
 
-        $role->permissions()->sync($permissionIds);
+        AuditService::log(
+            'admin',
+            $role->role_code,
+            'update_permissions',
+            null,
+            ['count' => $role->permissions()->count()],
+            "Updated permissions for role {$role->role_name}"
+        );
 
-        // Clear cached permissions
-        Cache::flush();
-
-        AuditService::log('admin', $role->role_code, 'update_permissions', null, ['count' => count($permissionIds)], "Updated permissions for role {$role->role_name}");
-
-        return redirect()->route('admin.permissions.index', ['role_id' => $role->id])->with('success', "Permissions updated successfully for {$role->role_name}.");
+        return redirect()->route('admin.permissions.index', ['role_id' => $role->id])
+            ->with('success', "Permissions updated successfully for {$role->role_name}.");
     }
 }

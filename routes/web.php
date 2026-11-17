@@ -101,7 +101,7 @@ Route::post('/login', [LoginController::class, 'login'])->name('login.post');
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
 // Authenticated Routes
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'permission'])->group(function () {
 
     // Profile & Password
     Route::get('/profile', [ProfileController::class, 'show'])->name('profile');

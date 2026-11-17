@@ -52,7 +52,9 @@
             <div class="card card-sattva h-100">
                 <div class="card-sattva-header d-flex align-items-center justify-content-between">
                     <span class="fw-bold text-dark"><i class="bi bi-cart3 text-primary me-2"></i>Order Status <i class="bi bi-info-circle text-muted ms-1 small" title="Current sales order pipeline"></i></span>
-                    <a href="{{ route('sales.orders.index') }}" class="small text-decoration-none text-success fw-semibold">View All <i class="bi bi-arrow-right"></i></a>
+                    @if(auth()->user() && auth()->user()->hasPermission('commercial.orders.view'))
+                        <a href="{{ route('sales.orders.index') }}" class="small text-decoration-none text-success fw-semibold">View All <i class="bi bi-arrow-right"></i></a>
+                    @endif
                 </div>
                 <div class="card-sattva-body">
                     <div class="row g-3 text-center">
@@ -106,7 +108,9 @@
             <div class="card card-sattva h-100">
                 <div class="card-sattva-header d-flex align-items-center justify-content-between">
                     <span class="fw-bold text-dark"><i class="bi bi-boxes text-warning me-2"></i>Stock Status <i class="bi bi-info-circle text-muted ms-1 small" title="Inventory stock health"></i></span>
-                    <a href="{{ route('inventory.stock.lots') }}" class="small text-decoration-none text-success fw-semibold">Inspect Lots <i class="bi bi-arrow-right"></i></a>
+                    @if(auth()->user() && auth()->user()->hasPermission('inventory.stock.view'))
+                        <a href="{{ route('inventory.stock.lots') }}" class="small text-decoration-none text-success fw-semibold">Inspect Lots <i class="bi bi-arrow-right"></i></a>
+                    @endif
                 </div>
                 <div class="card-sattva-body">
                     <div class="row g-3 text-center">
@@ -137,7 +141,9 @@
             <div class="card card-sattva h-100">
                 <div class="card-sattva-header d-flex align-items-center justify-content-between">
                     <span class="fw-bold text-dark"><i class="bi bi-box-arrow-in-down text-info me-2"></i>GRN Status <i class="bi bi-info-circle text-muted ms-1 small"></i></span>
-                    <a href="{{ route('purchase.grn.index') }}" class="small text-decoration-none text-success fw-semibold">View GRNs <i class="bi bi-arrow-right"></i></a>
+                    @if(auth()->user() && auth()->user()->hasPermission('purchase.grn.view'))
+                        <a href="{{ route('purchase.grn.index') }}" class="small text-decoration-none text-success fw-semibold">View GRNs <i class="bi bi-arrow-right"></i></a>
+                    @endif
                 </div>
                 <div class="card-sattva-body d-flex flex-column flex-sm-row align-items-center justify-content-around">
                     <div style="width: 190px; height: 190px;">
@@ -169,7 +175,9 @@
             <div class="card card-sattva h-100">
                 <div class="card-sattva-header d-flex align-items-center justify-content-between">
                     <span class="fw-bold text-dark"><i class="bi bi-pie-chart text-success me-2"></i>Warehouse Occupancy By Lots <i class="bi bi-info-circle text-muted ms-1 small"></i></span>
-                    <a href="{{ route('inventory.dashboard') }}" class="small text-decoration-none text-success fw-semibold">Inventory Hub <i class="bi bi-arrow-right"></i></a>
+                    @if(auth()->user() && auth()->user()->hasAnyPermission(['inventory.stock.view', 'inventory.transfers.view', 'inventory.adjustments.view', 'inventory.wip.view', 'inventory.recovery.view', 'inventory.waste.view']))
+                        <a href="{{ route('inventory.dashboard') }}" class="small text-decoration-none text-success fw-semibold">Inventory Hub <i class="bi bi-arrow-right"></i></a>
+                    @endif
                 </div>
                 <div class="card-sattva-body d-flex flex-column flex-sm-row align-items-center justify-content-around">
                     <div style="width: 190px; height: 190px;">
@@ -204,12 +212,16 @@
                         @endif
                     </div>
                     <div>
-                        <a href="{{ route('production.batches.create') }}" class="btn btn-primary-sattva btn-sm me-2">
-                            <i class="bi bi-plus-lg me-1"></i> New Batch
-                        </a>
-                        <a href="{{ route('production.batches.index') }}" class="btn btn-outline-secondary btn-sm">
-                            View All Batches
-                        </a>
+                        @if(auth()->user() && auth()->user()->hasPermission('production.batches.add'))
+                            <a href="{{ route('production.batches.create') }}" class="btn btn-primary-sattva btn-sm me-2">
+                                <i class="bi bi-plus-lg me-1"></i> New Batch
+                            </a>
+                        @endif
+                        @if(auth()->user() && auth()->user()->hasPermission('production.batches.view'))
+                            <a href="{{ route('production.batches.index') }}" class="btn btn-outline-secondary btn-sm">
+                                View All Batches
+                            </a>
+                        @endif
                     </div>
                 </div>
                 <div class="table-responsive">
@@ -229,9 +241,13 @@
                             @forelse($recentBatches as $b)
                                 <tr>
                                     <td class="fw-bold">
-                                        <a href="{{ route('production.batches.show', $b->id) }}" class="text-decoration-none text-dark">
-                                            {{ $b->batch_no }}
-                                        </a>
+                                        @if(auth()->user() && auth()->user()->hasPermission('production.batches.view'))
+                                            <a href="{{ route('production.batches.show', $b->id) }}" class="text-decoration-none text-dark">
+                                                {{ $b->batch_no }}
+                                            </a>
+                                        @else
+                                            <span class="text-dark">{{ $b->batch_no }}</span>
+                                        @endif
                                     </td>
                                     <td>{{ $b->product ? $b->product->name : 'N/A' }}</td>
                                     <td>{{ $b->productionPlan ? $b->productionPlan->plan_no : '-' }}</td>
@@ -241,12 +257,16 @@
                                         <x-status-badge :status="$b->status" />
                                     </td>
                                     <td class="text-end">
-                                        <a href="{{ route('production.batches.execute', $b->id) }}" class="btn btn-sm btn-outline-success" title="Execute Stage SOP">
-                                            <i class="bi bi-play-circle me-1"></i> Run
-                                        </a>
-                                        <a href="{{ route('production.batches.bmr', $b->id) }}" class="btn btn-sm btn-outline-primary" title="View BMR">
-                                            <i class="bi bi-file-earmark-medical"></i> BMR
-                                        </a>
+                                        @if(auth()->user() && auth()->user()->hasAnyPermission(['production.execution.view', 'production.batches.view']))
+                                            <a href="{{ route('production.batches.execute', $b->id) }}" class="btn btn-sm btn-outline-success" title="Execute Stage SOP">
+                                                <i class="bi bi-play-circle me-1"></i> Run
+                                            </a>
+                                        @endif
+                                        @if(auth()->user() && auth()->user()->hasAnyPermission(['production.bmr.view', 'production.batches.view']))
+                                            <a href="{{ route('production.batches.bmr', $b->id) }}" class="btn btn-sm btn-outline-primary" title="View BMR">
+                                                <i class="bi bi-file-earmark-medical"></i> BMR
+                                            </a>
+                                        @endif
                                     </td>
                                 </tr>
                             @empty

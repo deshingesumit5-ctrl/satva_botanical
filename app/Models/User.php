@@ -49,7 +49,10 @@ class User extends Authenticatable
 
     public function isSuperAdmin(): bool
     {
-        return $this->role && in_array(strtolower($this->role->role_code), ['super_admin', 'super admin']);
+        return $this->role && (
+            in_array(strtolower((string) $this->role->role_code), ['super_admin', 'super admin'], true) ||
+            strtolower((string) $this->role->role_name) === 'super admin'
+        );
     }
 
     public function hasPermission(string $code): bool
@@ -58,16 +61,39 @@ class User extends Authenticatable
             return true;
         }
 
-        if (!$this->role) {
+        if (!$this->role || $this->role->status !== 'Active') {
             return false;
         }
 
         return $this->role->hasPermissionTo($code);
     }
 
+    public function hasAnyPermission(array $codes): bool
+    {
+        if ($this->isSuperAdmin()) {
+            return true;
+        }
+
+        foreach ($codes as $code) {
+            if ($this->hasPermission($code)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public function isActive(): bool
     {
-        return $this->status === 'Active';
+        if ($this->status !== 'Active') {
+            return false;
+        }
+
+        if ($this->role && $this->role->status !== 'Active') {
+            return false;
+        }
+
+        return true;
     }
 
     public function getEmployeeCodeAttribute()

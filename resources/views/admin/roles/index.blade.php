@@ -5,15 +5,19 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h2 class="page-title">Role Master</h2>
-                <p class="page-subtitle">Configure system roles (Super Admin, Production Manager, QC Chemist, Store Officer,
-                    etc.).</p>
+                <p class="page-subtitle">Configure system roles (Super Admin, Production Manager, QC Chemist, Store Officer, etc.).</p>
             </div>
             <div class="d-flex gap-2">
-                <a href="{{ route('admin.permissions.index') }}" class="btn btn-outline-secondary"><i
-                        class="bi bi-grid-3x3-gap me-1"></i> Permission Matrix</a>
-                <button type="button" class="btn btn-primary-sattva" data-bs-toggle="modal" data-bs-target="#addRoleModal">
-                    <i class="bi bi-plus-lg me-1"></i> Add Role
-                </button>
+                @if(auth()->user() && auth()->user()->hasPermission('admin.permissions.view'))
+                    <a href="{{ route('admin.permissions.index') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-grid-3x3-gap me-1"></i> Permission Matrix
+                    </a>
+                @endif
+                @if(auth()->user() && auth()->user()->hasPermission('admin.roles.add'))
+                    <a href="{{ route('admin.roles.create') }}" class="btn btn-primary-sattva">
+                        <i class="bi bi-plus-lg me-1"></i> Add Role
+                    </a>
+                @endif
             </div>
         </div>
 
@@ -26,6 +30,7 @@
                             <th>Role Name</th>
                             <th>Slug / Code</th>
                             <th>Description</th>
+                            <th>Permissions</th>
                             <th>Assigned Users</th>
                             <th>Status</th>
                             <th width="140" class="text-end">Actions</th>
@@ -38,71 +43,49 @@
                                 <td class="fw-semibold text-dark">{{ $r->role_name ?? $r->name }}</td>
                                 <td><code>{{ $r->role_code ?? $r->code }}</code></td>
                                 <td class="text-muted small">{{ $r->description ?? '-' }}</td>
-                                <td><span class="badge bg-light text-dark border">{{ $r->users_count ?? $r->users()->count() }}
-                                        Users</span></td>
-                                <td><span class="badge-status badge-status-{{ strtolower($r->status) }}">{{ $r->status }}</span>
+                                <td>
+                                    @if(in_array(strtolower((string) ($r->role_code ?? $r->code)), ['super_admin', 'super admin'], true))
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle">All Permissions</span>
+                                    @else
+                                        <span class="badge bg-light text-dark border">{{ $r->permissions_count ?? $r->permissions()->count() }} Assigned</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    <span class="badge bg-light text-dark border">{{ $r->users_count ?? $r->users()->count() }} Users</span>
+                                </td>
+                                <td>
+                                    <span class="badge-status badge-status-{{ strtolower($r->status) }}">{{ $r->status }}</span>
                                 </td>
                                 <td class="text-end">
-                                    <a href="{{ route('admin.permissions.index', ['role_id' => $r->id]) }}"
-                                        class="btn btn-sm btn-icon btn-outline-info me-1" title="Configure Matrix"><i
-                                            class="bi bi-shield-lock"></i></a>
-                                    <a href="{{ route('admin.roles.edit', $r) }}"
-                                        class="btn btn-sm btn-icon btn-outline-primary me-1"><i class="bi bi-pencil"></i></a>
-                                    @if(!in_array($r->role_code ?? $r->code, ['super_admin', 'super-admin', 'admin']))
+                                    @if(auth()->user() && auth()->user()->hasPermission('admin.permissions.view'))
+                                        <a href="{{ route('admin.permissions.index', ['role_id' => $r->id]) }}"
+                                            class="btn btn-sm btn-icon btn-outline-info me-1" title="Configure Matrix">
+                                            <i class="bi bi-shield-lock"></i>
+                                        </a>
+                                    @endif
+                                    @if(auth()->user() && auth()->user()->hasPermission('admin.roles.edit'))
+                                        <a href="{{ route('admin.roles.edit', $r) }}"
+                                            class="btn btn-sm btn-icon btn-outline-primary me-1" title="Edit Role">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                    @endif
+                                    @if(auth()->user() && auth()->user()->hasPermission('admin.roles.delete') && !in_array($r->role_code ?? $r->code, ['super_admin', 'super-admin', 'admin']))
                                         <button type="button" class="btn btn-sm btn-icon btn-action-delete"
                                             data-url="{{ route('admin.roles.destroy', $r) }}"
-                                            data-name="{{ $r->role_name ?? $r->name }}" title="Delete"><i
-                                                class="bi bi-trash"></i></button>
+                                            data-name="{{ $r->role_name ?? $r->name }}" title="Delete">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
                                     @endif
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="text-center py-4 text-muted">No roles found.</td>
+                                <td colspan="8" class="text-center py-4 text-muted">No roles found.</td>
                             </tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
-        </div>
-    </div>
-
-    <div class="modal fade" id="addRoleModal" tabindex="-1">
-        <div class="modal-dialog">
-            <form action="{{ route('admin.roles.store') }}" method="POST" class="modal-content">
-                @csrf
-                <div class="modal-header">
-                    <h5 class="modal-title fw-bold">Add Role</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label required">Role Name</label>
-                        <input type="text" name="role_name" class="form-control" required
-                            placeholder="e.g. Production Supervisor">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Role Code / Slug</label>
-                        <input type="text" name="role_code" class="form-control" placeholder="Auto-generated if empty">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Description</label>
-                        <textarea name="description" class="form-control" rows="2"
-                            placeholder="Responsibilities of this role..."></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Status</label>
-                        <select name="status" class="form-select">
-                            <option value="Active">Active</option>
-                            <option value="Inactive">Inactive</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary-sattva">Save Role</button>
-                </div>
-            </form>
         </div>
     </div>
 @endsection
