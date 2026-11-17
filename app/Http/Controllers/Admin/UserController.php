@@ -122,12 +122,16 @@ class UserController extends Controller
             $request->merge(['password' => null, 'password_confirmation' => null]);
         }
 
+        $passwordRule = $request->has('password_confirmation')
+            ? 'nullable|string|min:8|confirmed'
+            : 'nullable|string|min:8';
+
         $validated = $request->validate([
             'name'          => 'required|string|max:100',
             'employee_code' => ['nullable', 'string', 'max:30', Rule::unique('users', 'user_id')->ignore($user->id)],
             'email'         => ['required', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
             'mobile'        => 'nullable|string|max:20',
-            'password'      => 'nullable|string|min:8|confirmed',
+            'password'      => $passwordRule,
             'role_id'       => 'required|exists:roles,id',
             'department_id' => 'nullable|exists:departments,id',
             'plant_id'      => 'nullable|exists:plants,id',

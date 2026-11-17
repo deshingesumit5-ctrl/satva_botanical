@@ -47,8 +47,8 @@ class LoginController extends Controller
         if ($user && !$user->isActive()) {
             RateLimiter::hit($throttleKey, 60);
             return back()->withInput()
-                ->with('error', 'Your account or assigned role is inactive. Please contact your system administrator.')
-                ->withErrors(['login' => 'Your account or assigned role is inactive. Please contact your system administrator.']);
+                ->with('error', 'Your account is inactive. Please contact your system administrator.')
+                ->withErrors(['login' => 'Your account is inactive. Please contact your system administrator.']);
         }
 
         $credentials = [

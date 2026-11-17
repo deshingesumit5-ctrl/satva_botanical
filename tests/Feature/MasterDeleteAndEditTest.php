@@ -139,7 +139,7 @@ class MasterDeleteAndEditTest extends TestCase
     public function test_uom_edit_and_delete(): void
     {
         $uom = Uom::create([
-            'uom_code' => 'UTMP' . rand(10, 99),
+            'uom_code' => 'UT-' . substr(uniqid(), -6),
             'uom_name' => 'Temp Unit ' . uniqid(),
             'category' => 'Count',
             'decimal_precision' => 0,
