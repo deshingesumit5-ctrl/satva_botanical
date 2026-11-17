@@ -270,3 +270,63 @@ window.toggleFullscreen = function () {
         }
     }
 };
+
+/**
+ * Anti-Autofill & Password Eye Toggle for User Forms (Page Load, pageshow, show.bs.modal)
+ */
+window.clearAntiAutofillFields = function (root) {
+    const scope = root || document;
+    scope.querySelectorAll('.anti-autofill-username, .anti-autofill-password').forEach(function (el) {
+        el.value = '';
+        el.setAttribute('readonly', 'readonly');
+    });
+};
+
+document.addEventListener('DOMContentLoaded', function () {
+    window.clearAntiAutofillFields(document);
+    setTimeout(function () { window.clearAntiAutofillFields(document); }, 60);
+});
+
+window.addEventListener('pageshow', function () {
+    window.clearAntiAutofillFields(document);
+});
+
+document.addEventListener('show.bs.modal', function (e) {
+    if (e.target) {
+        window.clearAntiAutofillFields(e.target);
+    }
+});
+
+document.addEventListener('click', function (e) {
+    const eyeBtn = e.target.closest('.password-eye-toggle');
+    if (!eyeBtn) return;
+    e.preventDefault();
+
+    let input = null;
+    const targetId = eyeBtn.getAttribute('data-target');
+    if (targetId) {
+        input = document.getElementById(targetId);
+    }
+    if (!input) {
+        const wrapper = eyeBtn.closest('.position-relative, .input-group');
+        if (wrapper) {
+            input = wrapper.querySelector('input[type="password"], input[type="text"]');
+        }
+    }
+    if (!input) return;
+
+    const icon = eyeBtn.querySelector('i');
+    if (input.type === 'password') {
+        input.type = 'text';
+        if (icon) {
+            icon.classList.remove('bi-eye');
+            icon.classList.add('bi-eye-slash');
+        }
+    } else {
+        input.type = 'password';
+        if (icon) {
+            icon.classList.remove('bi-eye-slash');
+            icon.classList.add('bi-eye');
+        }
+    }
+});

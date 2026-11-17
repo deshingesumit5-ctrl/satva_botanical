@@ -213,7 +213,7 @@ textarea.form-control {
 }
 
 .form-control:disabled,
-.form-control[readonly],
+.form-control[readonly]:not(.anti-autofill-username):not(.anti-autofill-password),
 .form-select:disabled {
     background-color: #f1f5f9 !important;
     color: #64748b !important;

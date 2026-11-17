@@ -58,23 +58,34 @@ class UserController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:100',
-            'email' => 'required|email|max:255|unique:users,email',
-            'username' => 'required|string|max:50|unique:users,username',
-            'password' => 'required|string|min:8|confirmed',
-            'mobile' => 'nullable|string|max:20',
-            'role_id' => 'required|exists:roles,id',
+            'name'          => 'required|string|max:100',
+            'employee_code' => 'nullable|string|max:30|unique:users,user_id',
+            'email'         => 'required|email|max:255|unique:users,email',
+            'username'      => 'required|string|max:50|unique:users,username',
+            'password'      => 'required|string|min:8|confirmed',
+            'mobile'        => 'nullable|string|max:20',
+            'role_id'       => 'required|exists:roles,id',
             'department_id' => 'nullable|exists:departments,id',
-            'plant_id' => 'nullable|exists:plants,id',
-            'status' => 'required|in:Active,Inactive',
+            'plant_id'      => 'nullable|exists:plants,id',
+            'status'        => 'required|in:Active,Inactive',
             'profile_image' => 'nullable|image|max:2048',
         ]);
 
-        $validated['password'] = Hash::make($validated['password']);
+        // Note: User model has 'password' => 'hashed' cast, so password is hashed once automatically by Eloquent.
 
-        // Generate User ID
-        $nextNum = User::withTrashed()->count() + 1;
-        $validated['user_id'] = 'USR-' . str_pad($nextNum, 4, '0', STR_PAD_LEFT);
+        // Generate unique User ID
+        if (!empty($validated['employee_code'])) {
+            $validated['user_id'] = $validated['employee_code'];
+        } else {
+            $nextNum = User::withTrashed()->count() + 1;
+            $userId = 'USR-' . str_pad($nextNum, 4, '0', STR_PAD_LEFT);
+            while (User::withTrashed()->where('user_id', $userId)->exists()) {
+                $nextNum++;
+                $userId = 'USR-' . str_pad($nextNum, 4, '0', STR_PAD_LEFT);
+            }
+            $validated['user_id'] = $userId;
+        }
+        unset($validated['employee_code']);
 
         if ($request->hasFile('profile_image')) {
             $validated['profile_image'] = $request->file('profile_image')->store('profiles', 'public');
@@ -82,6 +93,14 @@ class UserController extends Controller
 
         $user = User::create($validated);
         AuditService::log('admin', $user->user_id, 'create_user', null, $user->only(['name', 'email', 'username', 'role_id', 'status']), 'Created system user');
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => "User '{$user->name}' created successfully with ID {$user->user_id}.",
+                'data'    => $user,
+            ]);
+        }
 
         return redirect()->route('admin.users.index')->with('success', "User '{$user->name}' created successfully with ID {$user->user_id}.");
     }
