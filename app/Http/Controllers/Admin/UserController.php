@@ -118,31 +118,53 @@ class UserController extends Controller
 
     public function update(Request $request, User $user)
     {
+        if (trim((string) $request->input('password', '')) === '') {
+            $request->merge(['password' => null, 'password_confirmation' => null]);
+        }
+
         $validated = $request->validate([
-            'name' => 'required|string|max:100',
-            'email' => ['required', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
-            'mobile' => 'nullable|string|max:20',
-            'password' => 'nullable|string|min:6',
-            'role_id' => 'required|exists:roles,id',
+            'name'          => 'required|string|max:100',
+            'employee_code' => ['nullable', 'string', 'max:30', Rule::unique('users', 'user_id')->ignore($user->id)],
+            'email'         => ['required', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
+            'mobile'        => 'nullable|string|max:20',
+            'password'      => 'nullable|string|min:8|confirmed',
+            'role_id'       => 'required|exists:roles,id',
             'department_id' => 'nullable|exists:departments,id',
-            'plant_id' => 'nullable|exists:plants,id',
-            'status' => 'required|in:Active,Inactive',
+            'plant_id'      => 'nullable|exists:plants,id',
+            'status'        => 'required|in:Active,Inactive',
             'profile_image' => 'nullable|image|max:2048',
         ]);
+
+        if (!empty($validated['employee_code'])) {
+            $validated['user_id'] = $validated['employee_code'];
+        }
+        unset($validated['employee_code']);
 
         if ($request->hasFile('profile_image')) {
             $validated['profile_image'] = $request->file('profile_image')->store('profiles', 'public');
         }
 
         if ($request->filled('password')) {
-            $validated['password'] = Hash::make($request->password);
+            // User model has 'password' => 'hashed' cast, so Eloquent hashes once automatically.
+            $validated['password'] = $request->input('password');
         } else {
             unset($validated['password']);
         }
 
+        // Never allow username or empty password mass-assignment on update
+        unset($validated['username']);
+
         $old = $user->only(['name', 'email', 'mobile', 'role_id', 'department_id', 'plant_id', 'status']);
         $user->update($validated);
         AuditService::log('admin', $user->user_id, 'update_user', $old, $user->only(['name', 'email', 'mobile', 'role_id', 'department_id', 'plant_id', 'status']), 'Updated user details');
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => "User '{$user->name}' updated successfully.",
+                'data'    => $user->fresh(['role', 'plant', 'department']),
+            ]);
+        }
 
         return redirect()->route('admin.users.index')->with('success', "User '{$user->name}' updated successfully.");
     }
