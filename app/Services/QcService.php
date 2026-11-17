@@ -35,20 +35,22 @@ class QcService
             $stageExec = $qcRequest->stageExecution;
             if ($stageExec) {
                 $stageExec->qc_status = 'Approved';
-                $stageExec->status = 'Completed';
                 $stageExec->save();
 
-                // Unlock the next stage
-                $nextExec = BatchStageExecution::where('batch_id', $stageExec->batch_id)
-                    ->where('sequence_no', '>', $stageExec->sequence_no)
-                    ->where('status', 'Pending')
-                    ->orderBy('sequence_no')
-                    ->first();
+                $prodService = app(ProductionService::class);
+                $eval = $prodService->evaluateStageCompletion($stageExec);
+                if (empty($eval['operational_unmet'])) {
+                    $stageExec->status = 'Completed';
+                    if (!$stageExec->completed_at) {
+                        $stageExec->completed_at = now();
+                    }
+                    $stageExec->save();
 
-                if ($nextExec) {
-                    $nextExec->status = 'In Progress';
-                    $nextExec->start_time = now();
-                    $nextExec->save();
+                    // Unlock the next stage if all requirements are satisfied
+                    $prodService->unlockNextStageIfEligible($stageExec);
+                } else {
+                    $stageExec->status = 'In Progress';
+                    $stageExec->save();
                 }
             }
 

@@ -16,7 +16,6 @@ use App\Models\RecipeParameter;
 use App\Models\RecipeQcTest;
 use App\Models\RecipeStage;
 use App\Models\RecipeStageActivity;
-use App\Models\RecipeVersion;
 use App\Models\Stage;
 use App\Models\Uom;
 use App\Models\Warehouse;
@@ -52,11 +51,12 @@ class RecipeBuilderController extends Controller
 
             case 2:
                 $stages = Stage::where('status', 'Active')->orderBy('stage_name')->get();
-                $recipeStages = RecipeStage::with('stage')
+                $parameters = Parameter::where('status', 'Active')->orderBy('name')->get();
+                $recipeStages = RecipeStage::with(['stage', 'parameters.parameter'])
                     ->where('recipe_version_id', $version->id)
                     ->orderBy('sequence_no')
                     ->get();
-                return view('recipe.builder.step2', compact('recipe', 'version', 'step', 'stages', 'recipeStages', 'isReadOnly'));
+                return view('recipe.builder.step2', compact('recipe', 'version', 'step', 'stages', 'parameters', 'recipeStages', 'isReadOnly'));
 
             case 3:
                 $recipeStages = RecipeStage::with(['stage', 'activities.activity'])
@@ -95,12 +95,13 @@ class RecipeBuilderController extends Controller
                 return view('recipe.builder.step6', compact('recipe', 'version', 'step', 'recipeStages', 'equipments', 'isReadOnly'));
 
             case 7:
-                $recipeStages = RecipeStage::with(['stage', 'qcTests.qcTest'])
+                $recipeStages = RecipeStage::with(['stage', 'qcTests.qcTest', 'parameters.parameter'])
                     ->where('recipe_version_id', $version->id)
                     ->orderBy('sequence_no')
                     ->get();
                 $qcTests = QcTest::where('status', 'Active')->orderBy('test_name')->get();
-                return view('recipe.builder.step7', compact('recipe', 'version', 'step', 'recipeStages', 'qcTests', 'isReadOnly'));
+                $parameters = Parameter::where('status', 'Active')->orderBy('name')->get();
+                return view('recipe.builder.step7', compact('recipe', 'version', 'step', 'recipeStages', 'qcTests', 'parameters', 'isReadOnly'));
 
             case 8:
                 $recipe->load([
@@ -121,6 +122,37 @@ class RecipeBuilderController extends Controller
             default:
                 return redirect()->route('recipe.builder.step', ['recipe' => $recipe->id, 'step' => 1]);
         }
+    }
+
+    protected function normalizeProcessConditions(array $rawConditions): array
+    {
+        $clean = [];
+        foreach ($rawConditions as $cond) {
+            if (!is_array($cond)) {
+                continue;
+            }
+            $paramId = !empty($cond['parameter_id']) ? (int) $cond['parameter_id'] : null;
+            $paramName = $cond['parameter_name'] ?? null;
+            $operator = $cond['operator'] ?? '=';
+            $value = isset($cond['value']) && $cond['value'] !== '' ? (string) $cond['value'] : null;
+            $maxValue = isset($cond['max_value']) && $cond['max_value'] !== '' ? (string) $cond['max_value'] : null;
+            $holdTime = !empty($cond['hold_time_minutes']) ? (int) $cond['hold_time_minutes'] : null;
+
+            if (($paramId || $paramName) && $value !== null) {
+                if (!$paramName && $paramId) {
+                    $paramName = Parameter::where('id', $paramId)->value('name') ?? "Parameter #{$paramId}";
+                }
+                $clean[] = [
+                    'parameter_id'      => $paramId,
+                    'parameter_name'    => $paramName,
+                    'operator'          => in_array($operator, ['=', '>', '>=', '<', '<=', 'between'], true) ? $operator : '=',
+                    'value'             => $value,
+                    'max_value'         => $maxValue,
+                    'hold_time_minutes' => $holdTime,
+                ];
+            }
+        }
+        return $clean;
     }
 
     public function saveStep(Request $request, Recipe $recipe, int $step)
@@ -149,42 +181,72 @@ class RecipeBuilderController extends Controller
                 break;
 
             case 2:
-                // Stage Flow list
+                // Stage Flow list + Completion Requirements
                 $stageIds = $request->input('stages', []);
                 $instructions = $request->input('instructions', []);
                 $qcRequired = $request->input('qc_required', []);
+                $supervisorAuth = $request->input('supervisor_auth_required', []);
+                $minRepetitions = $request->input('min_repetitions', []);
+                $isOptional = $request->input('is_optional', []);
+                $isConditional = $request->input('is_conditional', []);
+                $conditionRules = $request->input('condition_rule', []);
+                $acceptanceParams = $request->input('acceptance_parameter_ids', []);
+                $processConditions = $request->input('expected_process_conditions', []);
 
-                DB::transaction(function () use ($version, $stageIds, $instructions, $qcRequired) {
-                    // Track occurrences of each stage
+                DB::transaction(function () use (
+                    $version,
+                    $stageIds,
+                    $instructions,
+                    $qcRequired,
+                    $supervisorAuth,
+                    $minRepetitions,
+                    $isOptional,
+                    $isConditional,
+                    $conditionRules,
+                    $acceptanceParams,
+                    $processConditions
+                ) {
                     $occurrences = [];
                     $sequence = 1;
-
-                    // Delete stages not in new list
-                    $existingStages = RecipeStage::where('recipe_version_id', $version->id)->get()->keyBy('id');
                     $keptIds = [];
 
                     foreach ($stageIds as $idx => $stageId) {
-                        $stageId = (int)$stageId;
+                        $stageId = (int) $stageId;
                         $occurrences[$stageId] = ($occurrences[$stageId] ?? 0) + 1;
                         $occNo = $occurrences[$stageId];
 
-                        // Find or create
                         $recipeStage = RecipeStage::firstOrNew([
                             'recipe_version_id' => $version->id,
-                            'stage_id' => $stageId,
-                            'occurrence_no' => $occNo,
+                            'stage_id'          => $stageId,
+                            'occurrence_no'     => $occNo,
                         ]);
 
-                        $recipeStage->sequence_no = $sequence++;
-                        $recipeStage->is_mandatory = true;
-                        $recipeStage->instructions = $instructions[$idx] ?? null;
-                        $recipeStage->qc_required = isset($qcRequired[$idx]);
-                        $recipeStage->save();
+                        $minReps = max(1, (int) ($minRepetitions[$idx] ?? $recipeStage->min_repetitions ?? 1));
+                        $optFlag = !empty($isOptional[$idx]);
+                        $condFlag = !empty($isConditional[$idx]);
 
+                        $recipeStage->sequence_no = $sequence++;
+                        $recipeStage->is_optional = $optFlag;
+                        $recipeStage->is_conditional = $condFlag;
+                        $recipeStage->is_mandatory = !$optFlag && !$condFlag;
+                        $recipeStage->condition_rule = $conditionRules[$idx] ?? $recipeStage->condition_rule;
+                        $recipeStage->is_repeatable = $minReps > 1 || $recipeStage->is_repeatable;
+                        $recipeStage->min_repetitions = $minReps;
+                        $recipeStage->instructions = $instructions[$idx] ?? null;
+                        $recipeStage->qc_required = !empty($qcRequired[$idx]);
+                        $recipeStage->supervisor_auth_required = !empty($supervisorAuth[$idx]);
+
+                        if (array_key_exists($idx, $acceptanceParams)) {
+                            $recipeStage->acceptance_parameter_ids = array_values(array_map('intval', array_filter((array) $acceptanceParams[$idx])));
+                        }
+                        if (array_key_exists($idx, $processConditions)) {
+                            $recipeStage->expected_process_conditions = $this->normalizeProcessConditions((array) $processConditions[$idx]);
+                        }
+
+                        $recipeStage->save();
                         $keptIds[] = $recipeStage->id;
                     }
 
-                    // Remove dropped stages
                     RecipeStage::where('recipe_version_id', $version->id)
                         ->whereNotIn('id', $keptIds)
                         ->delete();
@@ -268,7 +330,7 @@ class RecipeBuilderController extends Controller
                                     'standard_qty' => $stdQty,
                                     'uom_id' => $m['uom_id'] ?? $version->batch_uom_id,
                                     'output_type' => $outType,
-                                    'is_mandatory' => isset($m['is_mandatory']) ? true : true,
+                                    'is_mandatory' => true,
                                     'is_reusable' => isset($m['is_reusable']),
                                     'is_saleable' => isset($m['is_saleable']),
                                     'destination_warehouse_id' => !empty($m['warehouse_id']) ? $m['warehouse_id'] : null,
@@ -301,15 +363,22 @@ class RecipeBuilderController extends Controller
                 break;
 
             case 7:
-                // QC Mapping
+                // QC Mapping & Stage Completion Requirements
                 $qcData = $request->input('qc_tests', []);
-                DB::transaction(function () use ($version, $qcData) {
+                $completionReqs = $request->input('completion_requirements', []);
+
+                DB::transaction(function () use ($version, $qcData, $completionReqs) {
                     foreach ($version->stages as $stage) {
                         $stageQcs = $qcData[$stage->id] ?? [];
                         RecipeQcTest::where('recipe_stage_id', $stage->id)->delete();
 
+                        $hasBlockingQc = false;
                         foreach ($stageQcs as $q) {
                             if (!empty($q['qc_test_id'])) {
+                                $blocksNext = isset($q['blocks_next_stage']);
+                                if ($blocksNext) {
+                                    $hasBlockingQc = true;
+                                }
                                 RecipeQcTest::create([
                                     'recipe_stage_id' => $stage->id,
                                     'qc_test_id' => $q['qc_test_id'],
@@ -317,10 +386,25 @@ class RecipeBuilderController extends Controller
                                     'min_value' => $q['min_value'] ?? null,
                                     'max_value' => $q['max_value'] ?? null,
                                     'is_mandatory' => isset($q['is_mandatory']),
-                                    'blocks_next_stage' => isset($q['blocks_next_stage']),
+                                    'blocks_next_stage' => $blocksNext,
                                     'requires_approval' => true,
                                 ]);
                             }
+                        }
+
+                        if (isset($completionReqs[$stage->id]) && is_array($completionReqs[$stage->id])) {
+                            $req = $completionReqs[$stage->id];
+                            $minReps = max(1, (int) ($req['min_repetitions'] ?? $stage->min_repetitions ?? 1));
+                            $stage->min_repetitions = $minReps;
+                            $stage->is_repeatable = $minReps > 1 || !empty($req['is_repeatable']);
+                            $stage->qc_required = !empty($req['qc_required']) || $hasBlockingQc;
+                            $stage->supervisor_auth_required = !empty($req['supervisor_auth_required']);
+                            $stage->acceptance_parameter_ids = array_values(array_map('intval', array_filter((array) ($req['acceptance_parameter_ids'] ?? []))));
+                            $stage->expected_process_conditions = $this->normalizeProcessConditions((array) ($req['expected_process_conditions'] ?? []));
+                            $stage->save();
+                        } elseif ($hasBlockingQc) {
+                            $stage->qc_required = true;
+                            $stage->save();
                         }
                     }
                 });

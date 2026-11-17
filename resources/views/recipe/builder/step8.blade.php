@@ -46,12 +46,21 @@
                 <div class="list-group-item p-3">
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="fw-bold"><span class="badge bg-secondary me-2">Seq {{ $s->sequence_no }}</span> {{ $s->stage->name ?? 'Stage' }}</span>
-                        <div class="d-flex gap-2">
+                        <div class="d-flex flex-wrap gap-2">
                             <span class="badge bg-light text-dark border">{{ $s->activities->count() }} Activities</span>
                             <span class="badge bg-light text-dark border">{{ $s->parameters->count() }} Parameters</span>
                             <span class="badge bg-light text-dark border">{{ $s->materials->count() }} Materials</span>
                             <span class="badge bg-light text-dark border">{{ $s->equipments->count() }} Equipments</span>
                             <span class="badge bg-light text-dark border">{{ $s->qcTests->count() }} QC Tests</span>
+                            @if(($s->min_repetitions ?? 1) > 1)
+                                <span class="badge bg-info-subtle text-info-emphasis border">Min {{ $s->min_repetitions }} Repetitions</span>
+                            @endif
+                            @if($s->qc_required)
+                                <span class="badge bg-warning-subtle text-warning-emphasis border">QC Approval Required</span>
+                            @endif
+                            @if($s->supervisor_auth_required)
+                                <span class="badge bg-primary-subtle text-primary-emphasis border">Supervisor Auth Required</span>
+                            @endif
                         </div>
                     </div>
                 </div>

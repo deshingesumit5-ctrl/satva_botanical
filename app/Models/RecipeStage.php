@@ -15,7 +15,11 @@ class RecipeStage extends Model
         'is_optional' => 'boolean',
         'is_conditional' => 'boolean',
         'is_repeatable' => 'boolean',
+        'min_repetitions' => 'integer',
+        'acceptance_parameter_ids' => 'array',
+        'expected_process_conditions' => 'array',
         'qc_required' => 'boolean',
+        'supervisor_auth_required' => 'boolean',
     ];
 
     public function recipeVersion()

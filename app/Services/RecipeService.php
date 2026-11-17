@@ -108,7 +108,11 @@ class RecipeService
                     'condition_rule' => $sourceStage->condition_rule,
                     'is_repeatable' => $sourceStage->is_repeatable,
                     'repeat_config' => $sourceStage->repeat_config,
+                    'min_repetitions' => $sourceStage->min_repetitions ?? 1,
+                    'acceptance_parameter_ids' => $sourceStage->acceptance_parameter_ids,
+                    'expected_process_conditions' => $sourceStage->expected_process_conditions,
                     'qc_required' => $sourceStage->qc_required,
+                    'supervisor_auth_required' => $sourceStage->supervisor_auth_required ?? false,
                     'instructions' => $sourceStage->instructions,
                 ]);
 

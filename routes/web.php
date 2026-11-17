@@ -307,6 +307,9 @@ Route::middleware(['auth', 'permission'])->group(function () {
         Route::post('batches/{batch}/execute/stage/{stageExecution}/start', [ProductionExecutionController::class, 'startStage'])->name('execution.start-stage');
         Route::post('batches/{batch}/execute/stage/{stageExecution}/complete', [ProductionExecutionController::class, 'completeStage'])->name('batches.execute.stage.complete');
         Route::post('batches/{batch}/execute/stage/{stageExecution}/finish', [ProductionExecutionController::class, 'completeStage'])->name('execution.complete-stage');
+        Route::post('batches/{batch}/execute/stage/{stageExecution}/repeat', [ProductionExecutionController::class, 'addRepetition'])->name('execution.add-repetition');
+        Route::post('batches/{batch}/execute/stage/{stageExecution}/authorize', [ProductionExecutionController::class, 'authorizeStage'])->name('execution.authorize-stage');
+        Route::post('batches/{batch}/execute/stage/{stageExecution}/skip', [ProductionExecutionController::class, 'skipStage'])->name('execution.skip-stage');
 
         // Reconciliation & Closure
         Route::get('batches/{batch}/reconcile', [ReconciliationController::class, 'show'])->name('batches.reconcile');

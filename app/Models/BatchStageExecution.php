@@ -15,9 +15,16 @@ class BatchStageExecution extends Model
         'start_time' => 'datetime',
         'end_time' => 'datetime',
         'duration_minutes' => 'integer',
+        'actual_hold_time_minutes' => 'integer',
         'operator_count' => 'integer',
         'completed_at' => 'datetime',
+        'supervisor_authorized_at' => 'datetime',
     ];
+
+    public function authorizedByUser()
+    {
+        return $this->belongsTo(User::class, 'supervisor_authorized_by');
+    }
 
     public function batch()
     {

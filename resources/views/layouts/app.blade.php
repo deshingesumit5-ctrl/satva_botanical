@@ -417,7 +417,7 @@
                             <a class="nav-link nav-link-sattva dropdown-toggle {{ request()->is('admin*') ? 'active' : '' }}"
                                 href="#" role="button" data-bs-toggle="dropdown" data-bs-display="static"
                                 aria-expanded="false">
-                                <i class="bi bi-person-lock me-1"></i> Access
+                                <i class="bi bi-person-lock me-1"></i> Roles & Access
                             </a>
                             <ul class="dropdown-menu dropdown-menu-sattva shadow-lg">
                                 @if($authUser->hasPermission('admin.users.view'))
