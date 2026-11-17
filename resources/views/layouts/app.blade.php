@@ -1007,6 +1007,9 @@
         @yield('content')
     </div>
 
+    <!-- Reusable Form Modal Component (Reference Add Warehouse Design) -->
+    <x-form-modal id="sattvaDynamicFormModal" />
+
     <!-- Square Confirmation Banner Modal (380x380 px) -->
     @include('components.confirm-modal')
 

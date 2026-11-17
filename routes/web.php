@@ -268,9 +268,11 @@ Route::middleware(['auth', 'permission'])->group(function () {
         Route::post('wip/{wip}/consume', [WipController::class, 'consume'])->name('wip.consume');
 
         Route::get('recovery', [RecoveryController::class, 'index'])->name('recovery.index');
+        Route::post('recovery', [RecoveryController::class, 'store'])->name('recovery.store');
         Route::post('recovery/{lot}/consume', [RecoveryController::class, 'consume'])->name('recovery.consume');
 
         Route::get('waste', [WasteController::class, 'index'])->name('waste.index');
+        Route::post('waste', [WasteController::class, 'store'])->name('waste.store');
         Route::post('waste/{record}/dispose', [WasteController::class, 'dispose'])->name('waste.dispose');
     });
 

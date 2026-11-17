@@ -1,5 +1,5 @@
 <!-- Reusable Square Confirmation Banner Modal (380x380 px) -->
-<div class="modal fade" id="squareConfirmModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+<div class="modal fade" id="squareConfirmModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" style="z-index: 1085 !important;">
     <div class="modal-dialog modal-dialog-centered" style="max-width: 400px;">
         <div class="modal-content modal-square-content">
             <div id="modalIconBox" class="modal-square-icon-box bg-danger-subtle text-danger">

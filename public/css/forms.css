@@ -544,4 +544,68 @@ button.btn-outline-danger:hover {
         padding-top: 0.75rem !important;
         justify-content: flex-end !important;
     }
+
+    /* Mobile Modal: fills width with 16px margin and 1 column */
+    .modal:not(#squareConfirmModal) .modal-dialog {
+        margin: 16px !important;
+        width: calc(100% - 32px) !important;
+        max-width: calc(100% - 32px) !important;
+    }
+
+    .modal .row > [class*="col-"] {
+        width: 100% !important;
+        flex: 0 0 100% !important;
+        max-width: 100% !important;
+    }
+}
+
+/* --- Reference Add Warehouse Modal Sizes & Scrollable Layout --- */
+.sattva-modal-standard {
+    max-width: 500px !important;
+}
+
+.sattva-modal-lg {
+    max-width: 800px !important;
+}
+
+.sattva-modal-xl {
+    max-width: 1140px !important;
+}
+
+.modal:not(#squareConfirmModal) .modal-content {
+    border-radius: 16px !important;
+    border: 1px solid #e2e8f0 !important;
+    max-height: calc(100vh - 32px) !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+.modal:not(#squareConfirmModal) .modal-header {
+    border-bottom: 1px solid #e2e8f0 !important;
+    padding: 1.15rem 1.5rem !important;
+    flex-shrink: 0 !important;
+    background: #ffffff !important;
+}
+
+.modal:not(#squareConfirmModal) .modal-body {
+    padding: 1.4rem 1.5rem !important;
+    overflow-y: auto !important;
+    flex: 1 1 auto !important;
+    max-height: calc(100vh - 180px) !important;
+}
+
+.modal:not(#squareConfirmModal) .modal-footer {
+    border-top: 1px solid #e2e8f0 !important;
+    padding: 1rem 1.5rem !important;
+    flex-shrink: 0 !important;
+    background: #ffffff !important;
+    justify-content: flex-end !important;
+}
+
+#squareConfirmModal {
+    z-index: 1085 !important;
+}
+
+.modal-backdrop.confirm-backdrop-top {
+    z-index: 1080 !important;
 }
