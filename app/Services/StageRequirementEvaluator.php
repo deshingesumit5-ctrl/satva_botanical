@@ -36,27 +36,29 @@ class StageRequirementEvaluator
 
         if ($execution->status === 'Skipped' && $recipeStage && ($recipeStage->is_optional || $recipeStage->is_conditional)) {
             return [
-                'can_complete'          => true,
+                'can_complete' => true,
                 'can_unlock_next_stage' => true,
-                'qc_required'           => false,
-                'checklist'             => [[
-                    'key'          => 'skipped',
-                    'label'        => 'Optional / Conditional stage skipped',
-                    'status'       => 'Skipped',
-                    'met'          => true,
-                    'current'      => 'Skipped',
-                    'required'     => 'Skipped',
-                    'reason'       => null,
-                    'action'       => null,
-                    'anchor'       => '#stageExecutionForm',
-                    'anchor_label' => 'Go to Stage',
-                ]],
-                'operational_unmet'     => [],
-                'unmet_reasons'         => [],
-                'met_count'             => 1,
-                'total_count'           => 1,
-                'unmet_count'           => 0,
-                'summary'               => 'All requirements met. Optional/conditional stage skipped.',
+                'qc_required' => false,
+                'checklist' => [
+                    [
+                        'key' => 'skipped',
+                        'label' => 'Optional / Conditional stage skipped',
+                        'status' => 'Skipped',
+                        'met' => true,
+                        'current' => 'Skipped',
+                        'required' => 'Skipped',
+                        'reason' => null,
+                        'action' => null,
+                        'anchor' => '#stageExecutionForm',
+                        'anchor_label' => 'Go to Stage',
+                    ]
+                ],
+                'operational_unmet' => [],
+                'unmet_reasons' => [],
+                'met_count' => 1,
+                'total_count' => 1,
+                'unmet_count' => 0,
+                'summary' => 'All requirements met. Optional/conditional stage skipped.',
             ];
         }
 
@@ -73,7 +75,7 @@ class StageRequirementEvaluator
                 $missingNames = [];
 
                 $hasAnyRecordedActTiming = $execution->activityExecutions
-                    ->filter(fn ($a) => !empty($a->start_datetime) || !empty($a->start_time) || !empty($a->end_datetime) || !empty($a->end_time))
+                    ->filter(fn($a) => !empty($a->start_datetime) || !empty($a->start_time) || !empty($a->end_datetime) || !empty($a->end_time))
                     ->isNotEmpty();
 
                 if ($isAlreadyCompleted && !$hasAnyRecordedActTiming) {
@@ -103,14 +105,14 @@ class StageRequirementEvaluator
                 $met = $completedMandActs >= $totalMandActs;
                 $label = "Required activities with start/end times: {$completedMandActs} of {$totalMandActs}: " . ($met ? 'met' : 'not met');
                 $checklist[] = [
-                    'key'          => 'activities',
-                    'label'        => $label,
-                    'met'          => $met,
-                    'current'      => $completedMandActs,
-                    'required'     => $totalMandActs,
-                    'reason'       => $met ? null : implode(' ', $missingReasons),
-                    'action'       => $met ? null : ("Enter the start and end date-time for '" . implode("', '", $missingNames) . "' in Section B."),
-                    'anchor'       => '#section-b',
+                    'key' => 'activities',
+                    'label' => $label,
+                    'met' => $met,
+                    'current' => $completedMandActs,
+                    'required' => $totalMandActs,
+                    'reason' => $met ? null : implode(' ', $missingReasons),
+                    'action' => $met ? null : ("Enter the start and end date-time for '" . implode("', '", $missingNames) . "' in Section B."),
+                    'anchor' => '#section-b',
                     'anchor_label' => 'Go to Section B',
                 ];
 
@@ -132,7 +134,7 @@ class StageRequirementEvaluator
                 $missingParamReasons = [];
 
                 $hasAnyRecordedReading = $execution->parameterReadings
-                    ->filter(fn ($r) => $r->actual_value !== null && trim((string) $r->actual_value) !== '')
+                    ->filter(fn($r) => $r->actual_value !== null && trim((string) $r->actual_value) !== '')
                     ->isNotEmpty();
 
                 if ($isAlreadyCompleted && !$hasAnyRecordedReading) {
@@ -154,14 +156,14 @@ class StageRequirementEvaluator
                 $met = $enteredMandParams >= $totalMandParams;
                 $label = "Mandatory parameter readings: {$enteredMandParams} of {$totalMandParams} entered: " . ($met ? 'met' : 'not met');
                 $checklist[] = [
-                    'key'          => 'mandatory_readings',
-                    'label'        => $label,
-                    'met'          => $met,
-                    'current'      => $enteredMandParams,
-                    'required'     => $totalMandParams,
-                    'reason'       => $met ? null : implode(' ', $missingParamReasons),
-                    'action'       => $met ? null : "Enter the actual value in Section C.",
-                    'anchor'       => '#section-c',
+                    'key' => 'mandatory_readings',
+                    'label' => $label,
+                    'met' => $met,
+                    'current' => $enteredMandParams,
+                    'required' => $totalMandParams,
+                    'reason' => $met ? null : implode(' ', $missingParamReasons),
+                    'action' => $met ? null : "Enter the actual value in Section C.",
+                    'anchor' => '#section-c',
                     'anchor_label' => 'Go to Section C',
                 ];
 
@@ -209,14 +211,14 @@ class StageRequirementEvaluator
                 }
 
                 $checklist[] = [
-                    'key'          => 'material_consumption',
-                    'label'        => $label,
-                    'met'          => $met,
-                    'current'      => $recordedInputs,
-                    'required'     => $reqInputCount,
-                    'reason'       => $reason,
-                    'action'       => $met ? null : 'Enter the actual charged quantity in Section D.',
-                    'anchor'       => '#section-d',
+                    'key' => 'material_consumption',
+                    'label' => $label,
+                    'met' => $met,
+                    'current' => $recordedInputs,
+                    'required' => $reqInputCount,
+                    'reason' => $reason,
+                    'action' => $met ? null : 'Enter the actual charged quantity in Section D.',
+                    'anchor' => '#section-d',
                     'anchor_label' => 'Go to Section D',
                 ];
 
@@ -239,14 +241,14 @@ class StageRequirementEvaluator
                 $met = $recordedOutputs > 0;
                 $label = "Stage output quantities recorded: " . ($met ? 'met' : 'not met');
                 $checklist[] = [
-                    'key'          => 'stage_outputs',
-                    'label'        => $label,
-                    'met'          => $met,
-                    'current'      => $recordedOutputs,
-                    'required'     => 1,
-                    'reason'       => $met ? null : 'Output quantity is missing or zero.',
-                    'action'       => $met ? null : 'Enter the output quantity in Section E.',
-                    'anchor'       => '#section-e',
+                    'key' => 'stage_outputs',
+                    'label' => $label,
+                    'met' => $met,
+                    'current' => $recordedOutputs,
+                    'required' => 1,
+                    'reason' => $met ? null : 'Output quantity is missing or zero.',
+                    'action' => $met ? null : 'Enter the output quantity in Section E.',
+                    'anchor' => '#section-e',
                     'anchor_label' => 'Go to Section E',
                 ];
 
@@ -294,14 +296,14 @@ class StageRequirementEvaluator
             }
 
             $checklist[] = [
-                'key'          => 'repetitions',
-                'label'        => $label,
-                'met'          => $met,
-                'current'      => $totalRepsCount,
-                'required'     => $minReps,
-                'reason'       => $reason,
-                'action'       => $action,
-                'anchor'       => $anchor,
+                'key' => 'repetitions',
+                'label' => $label,
+                'met' => $met,
+                'current' => $totalRepsCount,
+                'required' => $minReps,
+                'reason' => $reason,
+                'action' => $action,
+                'anchor' => $anchor,
                 'anchor_label' => $anchorLabel,
             ];
 
@@ -341,9 +343,7 @@ class StageRequirementEvaluator
                 $met = false;
                 $hasActual = $actual !== null && trim((string) $actual) !== '';
 
-                if ($isAlreadyCompleted && !$hasActual) {
-                    $met = true;
-                } elseif ($hasActual && is_numeric($actual)) {
+                if ($hasActual && is_numeric($actual)) {
                     $val = (float) $actual;
                     $met = true;
                     if ($min !== null && $min !== '' && is_numeric($min) && $val < (float) $min) {
@@ -370,14 +370,14 @@ class StageRequirementEvaluator
                 }
 
                 $checklist[] = [
-                    'key'          => "param_accept_{$paramId}",
-                    'label'        => $label,
-                    'met'          => $met,
-                    'current'      => $actualDisplay,
-                    'required'     => $rangeStr,
-                    'reason'       => $reason,
-                    'action'       => $action,
-                    'anchor'       => '#section-c',
+                    'key' => "param_accept_{$paramId}",
+                    'label' => $label,
+                    'met' => $met,
+                    'current' => $actualDisplay,
+                    'required' => $rangeStr,
+                    'reason' => $reason,
+                    'action' => $action,
+                    'anchor' => '#section-c',
                     'anchor_label' => 'Go to Section C',
                 ];
 
@@ -418,13 +418,13 @@ class StageRequirementEvaluator
                         $a = (float) $actual;
                         $t = (float) $targetVal;
                         $valueMet = match ($operator) {
-                            '='       => abs($a - $t) < 0.0001,
-                            '>'       => $a > $t,
-                            '>='      => $a >= $t,
-                            '<'       => $a < $t,
-                            '<='      => $a <= $t,
+                            '=' => abs($a - $t) < 0.0001,
+                            '>' => $a > $t,
+                            '>=' => $a >= $t,
+                            '<' => $a < $t,
+                            '<=' => $a <= $t,
                             'between' => $a >= $t && ($maxVal !== null && is_numeric($maxVal) ? $a <= (float) $maxVal : true),
-                            default   => $a == $t,
+                            default => $a == $t,
                         };
                     } else {
                         $valueMet = strtolower(trim((string) $actual)) === strtolower(trim((string) $targetVal));
@@ -469,14 +469,14 @@ class StageRequirementEvaluator
                 }
 
                 $checklist[] = [
-                    'key'          => "process_cond_{$idx}",
-                    'label'        => $label,
-                    'met'          => $met,
-                    'current'      => $actualStr,
-                    'required'     => $condSpec,
-                    'reason'       => $reason,
-                    'action'       => $action,
-                    'anchor'       => $anchor,
+                    'key' => "process_cond_{$idx}",
+                    'label' => $label,
+                    'met' => $met,
+                    'current' => $actualStr,
+                    'required' => $condSpec,
+                    'reason' => $reason,
+                    'action' => $action,
+                    'anchor' => $anchor,
                     'anchor_label' => $anchorLabel,
                 ];
 
@@ -532,7 +532,7 @@ class StageRequirementEvaluator
                     $reworkRec = $qcReq ? ReworkRecord::where('qc_request_id', $qcReq->id)->latest('id')->first() : null;
                     if ($reworkRec && $reworkRec->rework_stage_execution_id) {
                         $reworkUrl = route('production.execution.show', [
-                            'batch'              => $execution->batch_id,
+                            'batch' => $execution->batch_id,
                             'stage_execution_id' => $reworkRec->rework_stage_execution_id,
                         ]);
                     }
@@ -555,19 +555,19 @@ class StageRequirementEvaluator
             }
 
             $checklist[] = [
-                'key'               => 'qc_approval',
-                'label'             => $label,
-                'met'               => $qcApproved,
-                'current'           => $qcStateText,
-                'required'          => 'Approved',
-                'reason'            => $reason,
-                'action'            => $action,
-                'anchor'            => $anchor,
-                'anchor_label'      => $anchorLabel,
-                'qc_request_id'     => $qcReq?->id,
+                'key' => 'qc_approval',
+                'label' => $label,
+                'met' => $qcApproved,
+                'current' => $qcStateText,
+                'required' => 'Approved',
+                'reason' => $reason,
+                'action' => $action,
+                'anchor' => $anchor,
+                'anchor_label' => $anchorLabel,
+                'qc_request_id' => $qcReq?->id,
                 'qc_request_number' => $qcReq?->qc_request_number,
-                'qc_request_url'    => $qcReqUrl,
-                'rework_url'        => $reworkUrl,
+                'qc_request_url' => $qcReqUrl,
+                'rework_url' => $reworkUrl,
             ];
 
             if (!$qcApproved) {
@@ -587,14 +587,14 @@ class StageRequirementEvaluator
             }
 
             $checklist[] = [
-                'key'          => 'supervisor_authorization',
-                'label'        => $label,
-                'met'          => $authorized,
-                'current'      => $authorized ? 'Authorized' : 'Not authorized',
-                'required'     => 'Authorized',
-                'reason'       => $authorized ? null : 'Not authorized yet.',
-                'action'       => $authorized ? null : 'Ask a user with the Authorize Stage permission (for example Production Supervisor) to click Authorize.',
-                'anchor'       => '#authorize-stage-btn',
+                'key' => 'supervisor_authorization',
+                'label' => $label,
+                'met' => $authorized,
+                'current' => $authorized ? 'Authorized' : 'Not authorized',
+                'required' => 'Authorized',
+                'reason' => $authorized ? null : 'Not authorized yet.',
+                'action' => $authorized ? null : 'Ask a user with the Authorize Stage permission (for example Production Supervisor) to click Authorize.',
+                'anchor' => '#authorize-stage-btn',
                 'anchor_label' => 'Go to Authorize',
             ];
 
@@ -605,8 +605,8 @@ class StageRequirementEvaluator
         }
 
         $totalCount = count($checklist);
-        $metCount = count(array_filter($checklist, fn ($i) => !empty($i['met'])));
-        $unmetItems = array_values(array_filter($checklist, fn ($i) => empty($i['met'])));
+        $metCount = count(array_filter($checklist, fn($i) => !empty($i['met'])));
+        $unmetItems = array_values(array_filter($checklist, fn($i) => empty($i['met'])));
         $unmetCount = count($unmetItems);
 
         $isStageStatusComplete = in_array($execution->status, ['Completed', 'Approved'], true);
@@ -628,16 +628,16 @@ class StageRequirementEvaluator
         $canUnlockNextStage = $isStageStatusComplete && empty($allUnmet);
 
         return [
-            'can_complete'          => $canComplete,
+            'can_complete' => $canComplete,
             'can_unlock_next_stage' => $canUnlockNextStage,
-            'qc_required'           => $qcRequired,
-            'checklist'             => $checklist,
-            'operational_unmet'     => $operationalUnmet,
-            'unmet_reasons'         => $allUnmet,
-            'met_count'             => $metCount,
-            'total_count'           => $totalCount,
-            'unmet_count'           => $unmetCount,
-            'summary'               => $summary,
+            'qc_required' => $qcRequired,
+            'checklist' => $checklist,
+            'operational_unmet' => $operationalUnmet,
+            'unmet_reasons' => $allUnmet,
+            'met_count' => $metCount,
+            'total_count' => $totalCount,
+            'unmet_count' => $unmetCount,
+            'summary' => $summary,
         ];
     }
 }

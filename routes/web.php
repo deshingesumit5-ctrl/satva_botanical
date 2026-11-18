@@ -99,6 +99,12 @@ use App\Http\Controllers\Reports\CommercialReportController;
 Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [LoginController::class, 'login'])->name('login.post');
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
+Route::get('/csrf-token', function () {
+    return response()->json([
+        'token' => csrf_token(),
+        'authenticated' => \Illuminate\Support\Facades\Auth::check(),
+    ])->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+})->name('csrf-token');
 
 // Authenticated Routes
 Route::middleware(['auth', 'permission'])->group(function () {

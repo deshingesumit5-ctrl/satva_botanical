@@ -38,4 +38,9 @@ class Recipe extends Model
     {
         return $this->hasMany(Batch::class);
     }
+
+    public function productionPlans()
+    {
+        return $this->hasMany(ProductionPlan::class);
+    }
 }

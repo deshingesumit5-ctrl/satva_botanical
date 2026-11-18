@@ -59,4 +59,29 @@ class RecipeValidationTest extends TestCase
         $response = $this->actingAs($this->admin)->get(route('recipe.versions', $recipe->id));
         $response->assertStatus(200);
     }
+
+    public function test_can_delete_unused_recipe_and_block_used_recipe(): void
+    {
+        $product = Product::firstOrFail();
+
+        $unusedRecipe = Recipe::create([
+            'recipe_code' => 'RCP-TMP-' . uniqid(),
+            'name' => 'Temp Deletable Recipe ' . uniqid(),
+            'product_id' => $product->id,
+            'status' => 'Draft',
+        ]);
+
+        $delRes = $this->actingAs($this->admin)->delete(route('recipe.destroy', $unusedRecipe));
+        $delRes->assertRedirect(route('recipe.index'));
+        $delRes->assertSessionHas('success');
+        $this->assertSoftDeleted('recipes', ['id' => $unusedRecipe->id]);
+
+        $usedRecipe = Recipe::whereHas('productionPlans')->orWhereHas('batches')->first();
+        if ($usedRecipe) {
+            $blockedRes = $this->actingAs($this->admin)->delete(route('recipe.destroy', $usedRecipe));
+            $blockedRes->assertRedirect();
+            $blockedRes->assertSessionHas('error');
+            $this->assertDatabaseHas('recipes', ['id' => $usedRecipe->id, 'deleted_at' => null]);
+        }
+    }
 }

@@ -479,4 +479,18 @@ class MasterDeleteAndEditTest extends TestCase
             $this->assertDatabaseHas('materials', ['id' => $mat->id, 'deleted_at' => null]);
         }
     }
+
+    public function test_csrf_token_endpoint_returns_live_token_and_auth_state(): void
+    {
+        $guestRes = $this->getJson(route('csrf-token'));
+        $guestRes->assertStatus(200)
+            ->assertJson(['authenticated' => false])
+            ->assertJsonStructure(['token', 'authenticated']);
+
+        $authRes = $this->actingAs($this->admin)->getJson(route('csrf-token'));
+        $authRes->assertStatus(200)
+            ->assertJson(['authenticated' => true])
+            ->assertJsonStructure(['token', 'authenticated']);
+        $this->assertNotEmpty($authRes->json('token'));
+    }
 }

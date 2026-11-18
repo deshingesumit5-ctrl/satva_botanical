@@ -78,7 +78,8 @@
                                     <form action="{{ route('recipe.toggle-status', $r) }}" method="POST" class="d-inline">
                                         @csrf
                                         <button type="button" class="border-0 bg-transparent p-0"
-                                            onclick="confirmAction('Toggle status for {{ $r->name }}?', this.closest('form'))">
+                                            data-confirm-name="{{ $r->name }}"
+                                            onclick="confirmAction('Toggle status for ' + this.dataset.confirmName + '?', this.closest('form'))">
                                             <span
                                                 class="badge-status badge-status-{{ strtolower($r->status) }}">{{ $r->status }}</span>
                                         </button>

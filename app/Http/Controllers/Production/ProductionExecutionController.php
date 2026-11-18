@@ -122,6 +122,7 @@ class ProductionExecutionController extends Controller
 
         // Sync missing stage activities, parameter readings, and material charges from RecipeStage only for editable stages
         if ($activeExecution && $activeExecution->recipeStage && !in_array($activeExecution->status, ['Completed', 'Approved', 'Skipped', 'QC Pending'], true)) {
+        if ($activeExecution && $activeExecution->recipeStage) {
             $recipeStage = $activeExecution->recipeStage()->with([
                 'activities.activity',
                 'parameters.parameter',

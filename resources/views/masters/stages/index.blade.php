@@ -16,9 +16,17 @@
         <div class="card card-sattva mb-4">
             <div class="card-sattva-body p-3">
                 <form action="{{ route('masters.stages.index') }}" method="GET" class="row g-2 align-items-center">
-                    <div class="col-md-6"><input type="text" name="search" value="{{ request('search') }}"
+                    <div class="col-md-5"><input type="text" name="search" value="{{ request('search') }}"
                             class="form-control" placeholder="Search stage name, code..."></div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
+                        <select name="category" class="form-select">
+                            <option value="">All Categories</option>
+                            @foreach(['Processing', 'Treatment', 'Separation', 'Drying'] as $cat)
+                                <option value="{{ $cat }}" {{ request('category') === $cat ? 'selected' : '' }}>{{ $cat }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-2">
                         <select name="status" class="form-select">
                             <option value="">All Status</option>
                             <option value="Active" {{ request('status') === 'Active' ? 'selected' : '' }}>Active</option>
@@ -42,10 +50,10 @@
                             <th width="60">#</th>
                             <th>Stage Code</th>
                             <th>Stage Name</th>
-                            <th>Default Seq</th>
+                            <th>Category</th>
+                            <th>Default Equipment</th>
                             <th>Std Duration</th>
-                            <th>Recovery?</th>
-                            <th>QC Mandatory</th>
+                            <th>QC Available</th>
                             <th>Status</th>
                             <th width="120" class="text-end">Actions</th>
                         </tr>
@@ -54,23 +62,17 @@
                         @forelse($stages as $idx => $stage)
                             <tr>
                                 <td>{{ $stages->firstItem() + $idx }}</td>
-                                <td class="fw-bold text-success">{{ $stage->code }}</td>
-                                <td class="fw-semibold text-dark">{{ $stage->name }}</td>
-                                <td>{{ $stage->default_sequence ?? '-' }}</td>
-                                <td>{{ $stage->standard_duration_hours ? $stage->standard_duration_hours . ' hrs' : '-' }}</td>
+                                <td class="fw-bold text-success">{{ $stage->stage_code }}</td>
+                                <td class="fw-semibold text-dark">{{ $stage->stage_name }}</td>
+                                <td><span class="badge bg-light text-dark border">{{ $stage->category }}</span></td>
+                                <td>{{ $stage->defaultEquipment->name ?? '-' }}</td>
+                                <td>{{ $stage->default_duration ? $stage->default_duration . ' ' . $stage->duration_uom : '-' }}</td>
                                 <td>
-                                    @if($stage->recovery_applicable)
-                                        <span class="badge bg-info-subtle text-info border">Applicable</span>
+                                    @if($stage->qc_available)
+                                        <span class="badge bg-warning-subtle text-warning border"><i
+                                                class="bi bi-shield-check me-1"></i>Available</span>
                                     @else
                                         <span class="text-muted small">No</span>
-                                    @endif
-                                </td>
-                                <td>
-                                    @if($stage->qc_mandatory_on_exit)
-                                        <span class="badge bg-warning-subtle text-warning border"><i
-                                                class="bi bi-shield-check me-1"></i>Mandatory</span>
-                                    @else
-                                        <span class="text-muted small">Optional</span>
                                     @endif
                                 </td>
                                 <td>
@@ -78,7 +80,8 @@
                                         class="d-inline">
                                         @csrf
                                         <button type="button" class="border-0 bg-transparent p-0"
-                                            onclick="confirmAction('Do you want to toggle status for {{ $stage->name }}?', this.closest('form'))">
+                                            data-confirm-name="{{ $stage->stage_name }}"
+                                            onclick="confirmAction('Do you want to toggle status for ' + this.dataset.confirmName + '?', this.closest('form'))">
                                             <span
                                                 class="badge-status badge-status-{{ strtolower($stage->status) }}">{{ $stage->status }}</span>
                                         </button>
@@ -89,7 +92,7 @@
                                         class="btn btn-sm btn-icon btn-outline-primary me-1"><i class="bi bi-pencil"></i></a>
                                     <button type="button" class="btn btn-sm btn-icon btn-action-delete"
                                         data-url="{{ route('masters.stages.destroy', $stage) }}"
-                                        data-name="{{ $stage->stage_name ?? $stage->name }}" title="Delete"><i
+                                        data-name="{{ $stage->stage_name }}" title="Delete"><i
                                             class="bi bi-trash"></i></button>
                                 </td>
                             </tr>
@@ -101,7 +104,15 @@
                     </tbody>
                 </table>
             </div>
+            @if($stages->hasPages())
+                <div class="card-footer bg-white d-flex justify-content-between align-items-center py-2">
+                    <span class="text-muted small">Showing {{ $stages->firstItem() }} to {{ $stages->lastItem() }} of
+                        {{ $stages->total() }}</span>
+                    {{ $stages->links() }}
+                </div>
+            @endif
         </div>
+    </div>
 
     <div class="modal fade" id="addStageModal" tabindex="-1">
         <div class="modal-dialog modal-lg sattva-modal-lg">
@@ -114,53 +125,95 @@
                 <div class="modal-body">
                     <div class="mb-3">
                         <label class="form-label required">Stage Name</label>
-                        <input type="text" name="name" class="form-control" required placeholder="e.g. Extraction">
+                        <input type="text" name="stage_name" class="form-control" required placeholder="e.g. Hydro-Alcoholic Extraction">
                     </div>
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label class="form-label required">Stage Name</label>
-                            <input type="text" name="name" class="form-control" required placeholder="e.g. Extraction">
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Stage Code</label>
+                            <input type="text" name="stage_code" class="form-control"
+                                placeholder="Auto-generated if blank">
                         </div>
-                        <div class="row g-2 mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label">Stage Code</label>
-                                <input type="text" name="code" class="form-control" placeholder="Auto-generated if blank">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Default Sequence</label>
-                                <input type="number" name="default_sequence" class="form-control" value="1" min="1">
-                            </div>
-                        </div>
-                        <div class="row g-2 mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label">Standard Duration (Hrs)</label>
-                                <input type="number" step="0.1" name="standard_duration_hours" class="form-control"
-                                    placeholder="e.g. 8.0">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Status</label>
-                                <select name="status" class="form-select">
-                                    <option value="Active">Active</option>
-                                    <option value="Inactive">Inactive</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-check form-switch mb-2">
-                            <input class="form-check-input" type="checkbox" name="recovery_applicable" value="1"
-                                id="recApp">
-                            <label class="form-check-label" for="recApp">Solvent Recovery Applicable</label>
-                        </div>
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" name="qc_mandatory_on_exit" value="1"
-                                id="qcMand">
-                            <label class="form-check-label" for="qcMand">QC Inspection Mandatory On Stage Exit</label>
+                        <div class="col-md-6">
+                            <label class="form-label required">Category</label>
+                            <select name="category" class="form-select" required>
+                                <option value="Processing">Processing</option>
+                                <option value="Treatment">Treatment</option>
+                                <option value="Separation">Separation</option>
+                                <option value="Drying">Drying</option>
+                            </select>
                         </div>
                     </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary-sattva">Save Stage</button>
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Default Duration</label>
+                            <input type="number" name="default_duration" class="form-control" min="1"
+                                placeholder="e.g. 8">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label required">Duration UOM</label>
+                            <select name="duration_uom" class="form-select" required>
+                                <option value="Hours">Hours</option>
+                                <option value="Minutes">Minutes</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Status</label>
+                            <select name="status" class="form-select">
+                                <option value="Active">Active</option>
+                                <option value="Inactive">Inactive</option>
+                            </select>
+                        </div>
                     </div>
-                </form>
-            </div>
+                    <div class="mb-3">
+                        <label class="form-label">Default Equipment</label>
+                        <select name="default_equipment_id" class="form-select">
+                            <option value="">None / Select Equipment</option>
+                            @foreach($equipments as $eq)
+                                <option value="{{ $eq->id }}">{{ $eq->name }} ({{ $eq->code }})</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea name="description" class="form-control" rows="2"
+                            placeholder="Optional process stage notes..."></textarea>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-md-6">
+                            <input type="hidden" name="activity_required" value="0">
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" name="activity_required" value="1"
+                                    id="actReq" checked>
+                                <label class="form-check-label" for="actReq">Activity Logging Required</label>
+                            </div>
+                            <input type="hidden" name="material_input_required" value="0">
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" name="material_input_required" value="1"
+                                    id="matInReq" checked>
+                                <label class="form-check-label" for="matInReq">Material Input Required</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <input type="hidden" name="material_output_required" value="0">
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" name="material_output_required" value="1"
+                                    id="matOutReq" checked>
+                                <label class="form-check-label" for="matOutReq">Material Output Required</label>
+                            </div>
+                            <input type="hidden" name="qc_available" value="0">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="qc_available" value="1"
+                                    id="qcAvail" checked>
+                                <label class="form-check-label" for="qcAvail">QC Inspection Available</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary-sattva">Save Stage</button>
+                </div>
+            </form>
         </div>
+    </div>
 @endsection

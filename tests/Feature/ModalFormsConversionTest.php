@@ -131,4 +131,93 @@ class ModalFormsConversionTest extends TestCase
         $this->actingAs($this->superAdmin)->get(route('sales.orders.create'))->assertStatus(200);
         $this->actingAs($this->superAdmin)->get(route('costing.expenses.create'))->assertStatus(200);
     }
+
+    public function test_stage_master_modal_has_single_stage_name_and_saves_properly(): void
+    {
+        $indexRes = $this->actingAs($this->superAdmin)->get(route('masters.stages.index'));
+        $indexRes->assertStatus(200);
+
+        $html = $indexRes->getContent();
+        $this->assertEquals(1, substr_count($html, 'name="stage_name"'));
+        $this->assertEquals(1, substr_count($html, 'id="addStageModal"'));
+
+        $modalPos = strpos($html, 'id="addStageModal"');
+        $modalHtml = substr($html, $modalPos);
+        $this->assertEquals(1, substr_count($modalHtml, '<div class="modal-body">'));
+
+        // 1. Blank stage_code auto-generates and blank duration does not fail
+        $autoCodeRes = $this->actingAs($this->superAdmin)->postJson(route('masters.stages.store'), [
+            'stage_name' => 'Hydro-Alcoholic Extraction Test',
+            'stage_code' => '',
+            'category' => 'Processing',
+            'default_duration' => '',
+            'duration_uom' => 'Hours',
+            'status' => 'Active',
+        ]);
+        $autoCodeRes->assertStatus(200);
+        $autoCodeRes->assertJson(['success' => true]);
+        $this->assertDatabaseHas('stages', ['stage_name' => 'Hydro-Alcoholic Extraction Test']);
+
+        // 2. Explicit code & duration saves properly
+        $explicitRes = $this->actingAs($this->superAdmin)->postJson(route('masters.stages.store'), [
+            'stage_name' => 'Supercritical CO2 Extraction',
+            'stage_code' => 'STG-TEST-901',
+            'category' => 'Separation',
+            'default_duration' => 6,
+            'duration_uom' => 'Hours',
+            'qc_available' => '0',
+            'status' => 'Active',
+        ]);
+        $explicitRes->assertStatus(200);
+        $explicitRes->assertJson(['success' => true]);
+        $this->assertDatabaseHas('stages', [
+            'stage_code' => 'STG-TEST-901',
+            'stage_name' => 'Supercritical CO2 Extraction',
+            'qc_available' => 0,
+        ]);
+
+        // 3. Duplicate stage_code returns 422 JSON with stage_code error key
+        $dupRes = $this->actingAs($this->superAdmin)->postJson(route('masters.stages.store'), [
+            'stage_name' => 'Duplicate Code Stage',
+            'stage_code' => 'STG-TEST-901',
+            'category' => 'Processing',
+            'duration_uom' => 'Hours',
+            'status' => 'Active',
+        ]);
+        $dupRes->assertStatus(422);
+        $dupRes->assertJsonValidationErrors(['stage_code']);
+
+        // 4. Legacy alias fields (name, code, blank/fractional standard_duration_hours) still work
+        $legacyRes = $this->actingAs($this->superAdmin)->postJson(route('masters.stages.store'), [
+            'name' => 'Legacy Alias Stage',
+            'code' => 'STG-TEST-902',
+            'standard_duration_hours' => '0.5',
+            'status' => 'Active',
+        ]);
+        $legacyRes->assertStatus(200);
+        $this->assertDatabaseHas('stages', [
+            'stage_code' => 'STG-TEST-902',
+            'default_duration' => 30,
+            'duration_uom' => 'Minutes',
+        ]);
+
+        // 5. Edit view renders cleanly and PUT preserves/updates stage fields
+        $created = \App\Models\Stage::where('stage_code', 'STG-TEST-901')->firstOrFail();
+        $this->actingAs($this->superAdmin)->get(route('masters.stages.edit', $created))->assertStatus(200);
+        $updateRes = $this->actingAs($this->superAdmin)->putJson(route('masters.stages.update', $created), [
+            'stage_name' => 'Supercritical CO2 Extraction Updated',
+            'category' => 'Separation',
+            'default_duration' => 8,
+            'duration_uom' => 'Hours',
+            'qc_available' => '1',
+            'status' => 'Active',
+        ]);
+        $updateRes->assertStatus(200);
+        $this->assertDatabaseHas('stages', [
+            'id' => $created->id,
+            'stage_name' => 'Supercritical CO2 Extraction Updated',
+            'default_duration' => 8,
+            'qc_available' => 1,
+        ]);
+    }
 }

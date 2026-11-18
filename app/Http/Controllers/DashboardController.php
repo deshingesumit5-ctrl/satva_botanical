@@ -44,36 +44,36 @@ class DashboardController extends Controller
 
         $allOrders = $orderQuery->get();
         $orderStatus = [
-            'draft'       => $allOrders->where('status', 'Draft')->count(),
+            'draft' => $allOrders->where('status', 'Draft')->count(),
             'in_progress' => $allOrders->whereIn('status', ['Confirmed', 'In Progress', 'Approved'])->count(),
-            'delivered'   => $allOrders->whereIn('status', ['Partially Dispatched', 'Fully Dispatched', 'Delivered'])->count(),
-            'complete'    => $allOrders->whereIn('status', ['Invoiced', 'Complete'])->count(),
-            'cancelled'   => $allOrders->where('status', 'Cancelled')->count(),
-            'total'       => $allOrders->count(),
+            'delivered' => $allOrders->whereIn('status', ['Partially Dispatched', 'Fully Dispatched', 'Delivered'])->count(),
+            'complete' => $allOrders->whereIn('status', ['Invoiced', 'Complete'])->count(),
+            'cancelled' => $allOrders->where('status', 'Cancelled')->count(),
+            'total' => $allOrders->count(),
         ];
 
         // Stock Status counts
         $activeLots = StockLot::where('status', 'Active')->get();
         $stockStatus = [
-            'low_stock'  => $activeLots->where('available_qty', '>', 0)->where('available_qty', '<=', 10)->count(),
-            'expired'    => StockLot::where('expiry_date', '<', now())->where('available_qty', '>', 0)->count(),
+            'low_stock' => $activeLots->where('available_qty', '>', 0)->where('available_qty', '<=', 10)->count(),
+            'expired' => StockLot::where('expiry_date', '<', now())->where('available_qty', '>', 0)->count(),
             'total_lots' => StockLot::count(),
         ];
 
         // GRN Status counts (aligned with grns.status enum: Draft, Received, Completed, Cancelled)
         $grnQuery = Grn::query();
         if ($fromDate) {
-            $grnQuery->whereDate('receipt_date', '>=', $fromDate);
+            $grnQuery->whereDate('grn_date', '>=', $fromDate);
         }
         if ($toDate) {
-            $grnQuery->whereDate('receipt_date', '<=', $toDate);
+            $grnQuery->whereDate('grn_date', '<=', $toDate);
         }
         $grns = $grnQuery->get();
         $grnStatus = [
-            'draft'      => $grns->where('status', 'Draft')->count(),
+            'draft' => $grns->where('status', 'Draft')->count(),
             'pending_qc' => $grns->whereIn('status', ['Received', 'Pending QC'])->count(),
-            'completed'  => $grns->where('status', 'Completed')->count(),
-            'total'      => $grns->count(),
+            'completed' => $grns->where('status', 'Completed')->count(),
+            'total' => $grns->count(),
         ];
 
         // Warehouse Occupancy

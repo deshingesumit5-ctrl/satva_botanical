@@ -60,7 +60,8 @@
                                         class="d-inline">
                                         @csrf
                                         <button type="button" class="border-0 bg-transparent p-0"
-                                            onclick="confirmAction('Toggle status for {{ $plant->name }}?', this.closest('form'))">
+                                            data-confirm-name="{{ $plant->name }}"
+                                            onclick="confirmAction('Toggle status for ' + this.dataset.confirmName + '?', this.closest('form'))">
                                             <span
                                                 class="badge-status badge-status-{{ strtolower($plant->status) }}">{{ $plant->status }}</span>
                                         </button>

@@ -66,13 +66,51 @@
                             </select>
                         </div>
                     </div>
-                    <div class="form-check form-switch mb-2">
-                        <input class="form-check-input" type="checkbox" name="recovery_applicable" value="1" id="recApp" {{ $stage->recovery_applicable ? 'checked' : '' }}>
-                        <label class="form-check-label" for="recApp">Solvent Recovery Applicable</label>
+                    <div class="mb-3">
+                        <label class="form-label">Default Equipment</label>
+                        <select name="default_equipment_id" class="form-select">
+                            <option value="">None / Select Equipment</option>
+                            @foreach($equipments as $eq)
+                                <option value="{{ $eq->id }}" {{ old('default_equipment_id', $stage->default_equipment_id) == $eq->id ? 'selected' : '' }}>
+                                    {{ $eq->name }} ({{ $eq->code }})
+                                </option>
+                            @endforeach
+                        </select>
                     </div>
-                    <div class="form-check form-switch mb-4">
-                        <input class="form-check-input" type="checkbox" name="qc_mandatory_on_exit" value="1" id="qcMand" {{ $stage->qc_mandatory_on_exit ? 'checked' : '' }}>
-                        <label class="form-check-label" for="qcMand">QC Inspection Mandatory On Stage Exit</label>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea name="description" class="form-control" rows="2"
+                            placeholder="Optional process stage notes...">{{ old('description', $stage->description) }}</textarea>
+                    </div>
+                    <div class="row g-2 mb-4">
+                        <div class="col-md-6">
+                            <input type="hidden" name="activity_required" value="0">
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" name="activity_required" value="1" id="actReq"
+                                    {{ old('activity_required', $stage->activity_required) ? 'checked' : '' }}>
+                                <label class="form-check-label" for="actReq">Activity Logging Required</label>
+                            </div>
+                            <input type="hidden" name="material_input_required" value="0">
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" name="material_input_required" value="1" id="matInReq"
+                                    {{ old('material_input_required', $stage->material_input_required) ? 'checked' : '' }}>
+                                <label class="form-check-label" for="matInReq">Material Input Required</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <input type="hidden" name="material_output_required" value="0">
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" name="material_output_required" value="1" id="matOutReq"
+                                    {{ old('material_output_required', $stage->material_output_required) ? 'checked' : '' }}>
+                                <label class="form-check-label" for="matOutReq">Material Output Required</label>
+                            </div>
+                            <input type="hidden" name="qc_available" value="0">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="qc_available" value="1" id="qcAvail"
+                                    {{ old('qc_available', $stage->qc_available) ? 'checked' : '' }}>
+                                <label class="form-check-label" for="qcAvail">QC Inspection Available</label>
+                            </div>
+                        </div>
                     </div>
                     <div class="d-flex justify-content-end gap-2">
                         <a href="{{ route('masters.stages.index') }}" class="btn btn-light">Cancel</a>

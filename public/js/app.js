@@ -79,6 +79,44 @@ window.showSattvaToast = function (message, type = 'success') {
 };
 
 /**
+ * Synchronize CSRF token across meta tag and all hidden _token form inputs
+ */
+window.syncCsrfToken = function (token) {
+    if (!token) return;
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    if (meta) {
+        meta.setAttribute('content', token);
+    }
+    document.querySelectorAll('input[name="_token"]').forEach(function (input) {
+        input.value = token;
+    });
+};
+
+/**
+ * Fetch the live session CSRF token so cached/stale pages never trigger 419 Page Expired
+ */
+window.refreshCsrfToken = async function () {
+    try {
+        const res = await fetch('/csrf-token', {
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin',
+            cache: 'no-store',
+        });
+        if (!res.ok) return null;
+        const data = await res.json();
+        if (data && data.token) {
+            window.syncCsrfToken(data.token);
+        }
+        return data;
+    } catch (e) {
+        return null;
+    }
+};
+
+/**
  * Universal Square Confirmation Banner Modal Function
  */
 window.openConfirmModal = function (options) {
@@ -139,7 +177,15 @@ window.openConfirmModal = function (options) {
         methodInput.value = 'POST';
     }
 
-    modalForm.onsubmit = function (e) {
+    const currentMetaToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    const modalTokenInput = modalForm.querySelector('input[name="_token"]');
+    if (modalTokenInput && currentMetaToken) {
+        modalTokenInput.value = currentMetaToken;
+    }
+
+    confirmBtn.disabled = false;
+
+    modalForm.onsubmit = async function (e) {
         if (document.activeElement && modalEl.contains(document.activeElement)) {
             document.activeElement.blur();
         }
@@ -148,11 +194,22 @@ window.openConfirmModal = function (options) {
             const bsModal = bootstrap.Modal.getInstance(modalEl);
             if (bsModal) bsModal.hide();
             options.onConfirm(reasonInput ? reasonInput.value : '');
+            return;
         }
+
+        e.preventDefault();
+        confirmBtn.disabled = true;
+        const info = await window.refreshCsrfToken();
+        if (info && info.authenticated === false) {
+            window.location.href = '/login';
+            return;
+        }
+        HTMLFormElement.prototype.submit.call(modalForm);
     };
 
     const bsModal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
     bsModal.show();
+    window.refreshCsrfToken();
 };
 
 /**
@@ -224,9 +281,14 @@ window.confirmAction = function (message, targetFormOrAction, options = {}) {
         confirmText: options.confirmText || 'Confirm',
         confirmBtnClass: options.confirmBtnClass || 'btn-success rounded-pill',
         formAction: actionUrl,
-        onConfirm: function () {
+        onConfirm: async function () {
             if (form && typeof form.submit === 'function') {
-                form.submit();
+                const info = await window.refreshCsrfToken();
+                if (info && info.authenticated === false) {
+                    window.location.href = '/login';
+                    return;
+                }
+                HTMLFormElement.prototype.submit.call(form);
             } else if (options.onConfirm && typeof options.onConfirm === 'function') {
                 options.onConfirm();
             }
@@ -317,8 +379,11 @@ document.addEventListener('DOMContentLoaded', function () {
     setTimeout(function () { window.clearAntiAutofillFields(document); }, 60);
 });
 
-window.addEventListener('pageshow', function () {
+window.addEventListener('pageshow', function (e) {
     window.clearAntiAutofillFields(document);
+    if (e.persisted) {
+        window.refreshCsrfToken();
+    }
 });
 
 document.addEventListener('show.bs.modal', function (e) {
@@ -601,6 +666,10 @@ window.refreshCurrentListView = async function (fallbackRedirectUrl) {
             const doc = parser.parseFromString(html, 'text/html');
             const newMain = doc.querySelector('.main-content');
             const currentMain = document.querySelector('.main-content');
+            const freshToken = doc.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            if (freshToken) {
+                window.syncCsrfToken(freshToken);
+            }
 
             if (newMain && currentMain) {
                 // Preserve toast container while updating main content
@@ -657,9 +726,12 @@ window.submitModalFormAjax = async function (form) {
 
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     const formData = new FormData(form);
+    if (csrfToken) {
+        formData.set('_token', csrfToken);
+    }
 
     try {
-        const res = await fetch(form.action, {
+        let res = await fetch(form.action, {
             method: 'POST',
             body: formData,
             credentials: 'same-origin',
@@ -670,11 +742,37 @@ window.submitModalFormAjax = async function (form) {
             },
         });
 
+        if (res.status === 419) {
+            const info = await window.refreshCsrfToken();
+            if (info && info.authenticated === false) {
+                window.location.href = '/login';
+                return;
+            }
+            if (info && info.token) {
+                formData.set('_token', info.token);
+                res = await fetch(form.action, {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'same-origin',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': info.token,
+                    },
+                });
+            }
+        }
+
         let data = {};
         try {
             data = await res.json();
         } catch (e) {
             data = {};
+        }
+
+        if (res.status === 419 && data.redirect) {
+            window.location.href = data.redirect;
+            return;
         }
 
         if (res.status === 422 || (!res.ok && data.errors)) {

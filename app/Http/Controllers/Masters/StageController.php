@@ -39,11 +39,19 @@ class StageController extends Controller
 
     public function store(Request $request)
     {
-        if ($request->has('name') && !$request->has('stage_name')) {
-            $request->merge(['stage_name' => $request->name]);
+        if ($request->filled('name') && !$request->filled('stage_name')) {
+            $request->merge(['stage_name' => $request->input('name')]);
         }
-        if ($request->has('code') && !$request->has('stage_code')) {
-            $request->merge(['stage_code' => $request->code]);
+        if ($request->filled('code') && !$request->filled('stage_code')) {
+            $request->merge(['stage_code' => $request->input('code')]);
+        }
+        if ($request->filled('stage_name')) {
+            $request->merge(['stage_name' => trim((string) $request->input('stage_name'))]);
+        }
+        if ($request->filled('stage_code')) {
+            $request->merge(['stage_code' => trim((string) $request->input('stage_code'))]);
+        } else {
+            $request->merge(['stage_code' => $this->generateNextStageCode()]);
         }
         if (!$request->filled('category')) {
             $request->merge(['category' => 'Processing']);
@@ -51,8 +59,22 @@ class StageController extends Controller
         if (!$request->filled('duration_uom')) {
             $request->merge(['duration_uom' => 'Hours']);
         }
-        if ($request->has('standard_duration_hours') && !$request->has('default_duration')) {
-            $request->merge(['default_duration' => (int) $request->standard_duration_hours, 'duration_uom' => 'Hours']);
+        if (!$request->filled('status')) {
+            $request->merge(['status' => 'Active']);
+        }
+        if ($request->filled('standard_duration_hours') && !$request->filled('default_duration')) {
+            $hours = (float) $request->input('standard_duration_hours');
+            if ($hours > 0 && fmod($hours, 1.0) !== 0.0) {
+                $request->merge([
+                    'default_duration' => max(1, (int) round($hours * 60)),
+                    'duration_uom' => 'Minutes',
+                ]);
+            } elseif ($hours > 0) {
+                $request->merge([
+                    'default_duration' => (int) $hours,
+                    'duration_uom' => 'Hours',
+                ]);
+            }
         }
 
         $validated = $request->validate([
@@ -89,8 +111,11 @@ class StageController extends Controller
 
     public function update(Request $request, Stage $stage)
     {
-        if ($request->has('name') && !$request->has('stage_name')) {
-            $request->merge(['stage_name' => $request->name]);
+        if ($request->filled('name') && !$request->filled('stage_name')) {
+            $request->merge(['stage_name' => $request->input('name')]);
+        }
+        if ($request->filled('stage_name')) {
+            $request->merge(['stage_name' => trim((string) $request->input('stage_name'))]);
         }
         if (!$request->filled('category')) {
             $request->merge(['category' => $stage->category ?? 'Processing']);
@@ -98,8 +123,19 @@ class StageController extends Controller
         if (!$request->filled('duration_uom')) {
             $request->merge(['duration_uom' => $stage->duration_uom ?? 'Hours']);
         }
-        if ($request->has('standard_duration_hours') && !$request->has('default_duration')) {
-            $request->merge(['default_duration' => (int) $request->standard_duration_hours, 'duration_uom' => 'Hours']);
+        if ($request->filled('standard_duration_hours') && !$request->filled('default_duration')) {
+            $hours = (float) $request->input('standard_duration_hours');
+            if ($hours > 0 && fmod($hours, 1.0) !== 0.0) {
+                $request->merge([
+                    'default_duration' => max(1, (int) round($hours * 60)),
+                    'duration_uom' => 'Minutes',
+                ]);
+            } elseif ($hours > 0) {
+                $request->merge([
+                    'default_duration' => (int) $hours,
+                    'duration_uom' => 'Hours',
+                ]);
+            }
         }
 
         $validated = $request->validate([
@@ -113,10 +149,18 @@ class StageController extends Controller
             'status' => 'required|in:Active,Inactive',
         ]);
 
-        $validated['activity_required'] = $request->boolean('activity_required');
-        $validated['material_input_required'] = $request->boolean('material_input_required');
-        $validated['material_output_required'] = $request->boolean('material_output_required');
-        $validated['qc_available'] = $request->boolean('qc_available');
+        $validated['activity_required'] = $request->has('activity_required')
+            ? $request->boolean('activity_required')
+            : (bool) $stage->activity_required;
+        $validated['material_input_required'] = $request->has('material_input_required')
+            ? $request->boolean('material_input_required')
+            : (bool) $stage->material_input_required;
+        $validated['material_output_required'] = $request->has('material_output_required')
+            ? $request->boolean('material_output_required')
+            : (bool) $stage->material_output_required;
+        $validated['qc_available'] = $request->has('qc_available')
+            ? $request->boolean('qc_available')
+            : (bool) $stage->qc_available;
 
         $old = $stage->toArray();
         $stage->update($validated);
@@ -161,5 +205,25 @@ class StageController extends Controller
     public function show($id = null)
     {
         return redirect()->back();
+    }
+
+    /**
+     * Generate the next unique STG-XX code when stage_code is left blank.
+     */
+    protected function generateNextStageCode(): string
+    {
+        $existingCodes = Stage::withTrashed()
+            ->pluck('stage_code')
+            ->map(fn ($code) => strtoupper((string) $code))
+            ->flip()
+            ->all();
+
+        $number = 1;
+        do {
+            $candidate = 'STG-' . str_pad((string) $number, 2, '0', STR_PAD_LEFT);
+            $number++;
+        } while (isset($existingCodes[$candidate]));
+
+        return $candidate;
     }
 }
