@@ -19,11 +19,26 @@ class BatchCostController extends Controller
 
     public function index(Request $request)
     {
-        $query = BatchCost::with(['batch.product', 'batch.recipeVersion']);
+        // Ensure every completed batch has an up-to-date BatchCost summary
+        $missingCostBatches = Batch::where('status', 'Completed')
+            ->whereDoesntHave('cost')
+            ->get();
+
+        foreach ($missingCostBatches as $batch) {
+            $this->costingService->updateBatchCostSummary($batch);
+        }
+
+        $query = BatchCost::with([
+            'batch.product',
+            'batch.recipeVersion',
+            'batch.uom',
+            'batch.consumptions.material',
+            'batch.consumptions.stockLot',
+        ]);
 
         if ($search = $request->input('search')) {
             $query->whereHas('batch', function ($bq) use ($search) {
-                $bq->where('batch_no', 'like', "%{$search}%")
+                $bq->where('batch_number', 'like', "%{$search}%")
                    ->orWhereHas('product', function ($pq) use ($search) {
                        $pq->where('name', 'like', "%{$search}%");
                    });
@@ -40,13 +55,16 @@ class BatchCostController extends Controller
         $batch->load([
             'product',
             'recipeVersion',
-            'materialConsumptions.stockLot.material',
+            'uom',
+            'consumptions.material',
+            'consumptions.stockLot',
             'reconciliation',
             'cost',
         ]);
 
         // Auto-calculate / update if not yet finalized
         $cost = $this->costingService->updateBatchCostSummary($batch);
+        $cost->load(['batch.consumptions.material', 'batch.consumptions.stockLot']);
 
         return view('costing.batch-cost.show', compact('batch', 'cost'));
     }

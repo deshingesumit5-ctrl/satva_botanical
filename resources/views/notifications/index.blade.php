@@ -9,14 +9,27 @@
     <div class="card card-sattva">
         <div class="card-sattva-body p-0">
             <div class="list-group list-group-flush">
+                @php
+                    $currentUser = auth()->user();
+                    $newlyOpenedIds = $justReadIds ?? [];
+                @endphp
                 @forelse($notifications as $n)
-                    <div class="list-group-item p-3 d-flex align-items-start justify-content-between {{ $n->is_read ? 'bg-white' : 'bg-light' }}">
+                    @php
+                        $isNewlyOpened = in_array($n->id, $newlyOpenedIds, true);
+                        $isReadForUser = $isNewlyOpened || $n->isReadBy($currentUser);
+                    @endphp
+                    <div class="list-group-item p-3 d-flex align-items-start justify-content-between {{ $isNewlyOpened ? 'bg-light' : ($isReadForUser ? 'bg-white' : 'bg-light') }}">
                         <div class="d-flex align-items-start gap-3">
-                            <div class="rounded-circle p-2 {{ $n->is_read ? 'bg-secondary bg-opacity-10 text-muted' : 'bg-primary bg-opacity-10 text-primary' }}">
+                            <div class="rounded-circle p-2 {{ $isNewlyOpened || !$isReadForUser ? 'bg-primary bg-opacity-10 text-primary' : 'bg-secondary bg-opacity-10 text-muted' }}">
                                 <i class="bi bi-bell-fill fs-5"></i>
                             </div>
                             <div>
-                                <h6 class="fw-bold mb-1 {{ $n->is_read ? 'text-dark' : 'text-primary' }}">{{ $n->title }}</h6>
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <h6 class="fw-bold mb-0 {{ $isNewlyOpened || !$isReadForUser ? 'text-primary' : 'text-dark' }}">{{ $n->title }}</h6>
+                                    @if($isNewlyOpened)
+                                        <span class="badge bg-danger rounded-pill" style="font-size: 0.65rem;">New</span>
+                                    @endif
+                                </div>
                                 <p class="text-muted small mb-1">{{ $n->message }}</p>
                                 <span class="badge bg-secondary-subtle text-secondary small">{{ $n->created_at->diffForHumans() }}</span>
                                 @if($n->link)
@@ -25,7 +38,7 @@
                             </div>
                         </div>
                         <div>
-                            @if(!$n->is_read)
+                            @if(!$isReadForUser)
                                 <form action="{{ route('notifications.read', $n->id) }}" method="POST">
                                     @csrf
                                     <button type="submit" class="btn btn-outline-secondary btn-sm" title="Mark as Read">

@@ -25,7 +25,7 @@ class CostingService
      */
     public function calculateDirectMaterialCost(Batch $batch): float
     {
-        $consumptions = $batch->consumptions;
+        $consumptions = $batch->consumptions()->with('stockLot')->get();
         $totalCost = 0.0;
 
         foreach ($consumptions as $c) {
@@ -94,11 +94,15 @@ class CostingService
                 'status' => 'Posted',
             ]);
 
-            foreach ($batches as $b) {
+            foreach ($batches as $index => $b) {
+                $batchAllocAmount = ($index === $batchCount - 1)
+                    ? round($totalExpense - ($perBatchAmount * ($batchCount - 1)), 2)
+                    : $perBatchAmount;
+
                 ExpenseAllocationItem::create([
                     'expense_allocation_id' => $allocation->id,
                     'batch_id' => $b->id,
-                    'allocated_amount' => $perBatchAmount,
+                    'allocated_amount' => $batchAllocAmount,
                 ]);
 
                 // Update BatchCost summary
@@ -152,7 +156,7 @@ class CostingService
             else $otherCost += $amt;
         }
 
-        $totalCost = $directMatCost + $labourCost + $electricityCost + $maintenanceCost + $equipmentCost + $miscCost + $otherCost;
+        $totalCost = round($directMatCost + $labourCost + $electricityCost + $maintenanceCost + $equipmentCost + $miscCost + $otherCost, 2);
         $fgQty = (float)$batch->actual_qty > 0 ? (float)$batch->actual_qty : (float)$batch->planned_qty;
         $costPerUnit = $fgQty > 0 ? round($totalCost / $fgQty, 4) : 0.0;
 

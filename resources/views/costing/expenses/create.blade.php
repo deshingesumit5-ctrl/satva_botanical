@@ -33,16 +33,15 @@
                     <div class="col-md-6">
                         <label class="form-label required">Expense Category</label>
                         <select name="expense_category" class="form-select" required>
-                            <option value="Electricity">Electricity (HT Substation)</option>
-                            <option value="Boiler Fuel">Boiler Fuel / Steam Briquettes</option>
-                            <option value="Direct Labor">Direct Factory Labor</option>
-                            <option value="Solvent Losses">Solvent Make-up / Loss</option>
-                            <option value="QC & Lab Testing">QC Reagents & Standards</option>
+                            @foreach(($categories ?? \App\Models\MonthlyExpense::CATEGORIES) as $key => $label)
+                                <option value="{{ $key }}">{{ $label }}</option>
+                            @endforeach
                         </select>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label required">Plant Facility</label>
-                        <select name="plant_id" class="form-select" required>
+                        <label class="form-label">Plant Facility</label>
+                        <select name="plant_id" class="form-select">
+                            <option value="">All Plants</option>
                             @foreach($plants as $p)
                                 <option value="{{ $p->id }}">{{ $p->name }}</option>
                             @endforeach
@@ -50,14 +49,20 @@
                     </div>
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label required">Total Incurred Amount (INR)</label>
-                    <input type="number" step="0.01" name="amount" class="form-control" required placeholder="0.00">
+                <div class="row g-2 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label required">Total Incurred Amount (INR)</label>
+                        <input type="number" step="0.01" min="0.01" name="amount" class="form-control" required placeholder="0.00">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label required">Entry / Voucher Date</label>
+                        <input type="date" name="entry_date" class="form-control" value="{{ date('Y-m-d') }}" required>
+                    </div>
                 </div>
 
                 <div class="mb-4">
                     <label class="form-label">Bill Reference / Remarks</label>
-                    <textarea name="remarks" class="form-control" rows="2" placeholder="e.g. MSEDCL Electricity Bill for Extraction Plant 1"></textarea>
+                    <textarea name="description" class="form-control" rows="2" placeholder="e.g. MSEDCL Electricity Bill for Extraction Plant 1"></textarea>
                 </div>
 
                 <div class="d-flex justify-content-end gap-2">

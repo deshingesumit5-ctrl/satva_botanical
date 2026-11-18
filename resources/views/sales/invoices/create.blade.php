@@ -1,118 +1,128 @@
 @extends('layouts.app')
 @section('title', 'Generate Sales Invoice')
 @section('content')
-<div class="container-fluid px-0">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h2 class="page-title">Generate GST Sales Invoice</h2>
-            <p class="page-subtitle">Create commercial billing from delivery dispatch notes.</p>
+    <div class="container-fluid px-0">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2 class="page-title">Generate GST Sales Invoice</h2>
+                <p class="page-subtitle">Create commercial billing from delivery dispatch notes.</p>
+            </div>
+            <a href="{{ route('sales.invoices.index') }}" class="btn btn-outline-secondary"><i
+                    class="bi bi-arrow-left me-1"></i> Back</a>
         </div>
-        <a href="{{ route('sales.invoices.index') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i> Back</a>
+
+        <div class="card card-sattva">
+            <div class="card-sattva-body p-4">
+                <form action="{{ route('sales.invoices.store') }}" method="POST">
+                    @csrf
+                    @if($selectedDispatch && $selectedDispatch->sales_order_id)
+                        <input type="hidden" name="sales_order_id" value="{{ $selectedDispatch->sales_order_id }}">
+                    @endif
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label required">Delivery Dispatch Note</label>
+                            <select name="dispatch_id" class="form-select" onchange="loadInvoiceDispatch(this)" required>
+                                <option value="">Select Dispatch Challan</option>
+                                @foreach($dispatches as $d)
+                                    <option value="{{ $d->id }}" {{ $selectedDispatch && $selectedDispatch->id == $d->id ? 'selected' : '' }}>
+                                        {{ $d->dispatch_number }} | {{ $d->customer->name ?? '' }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label required">Customer</label>
+                            <select name="customer_id" class="form-select" required>
+                                <option value="">Select Customer</option>
+                                @foreach($customers as $c)
+                                    <option value="{{ $c->id }}" {{ $selectedDispatch && $selectedDispatch->customer_id == $c->id ? 'selected' : '' }}>{{ $c->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <label class="form-label required">Invoice Date</label>
+                            <input type="date" name="invoice_date" class="form-control" required
+                                value="{{ old('invoice_date', date('Y-m-d')) }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label required">Due Date</label>
+                            <input type="date" name="due_date" class="form-control" required
+                                value="{{ old('due_date', date('Y-m-d', strtotime('+30 days'))) }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Payment Terms</label>
+                            <input type="text" name="payment_terms" class="form-control"
+                                value="{{ $selectedDispatch->salesOrder->payment_terms ?? 'Net 30 Days' }}" readonly>
+                        </div>
+                    </div>
+
+                    @if($selectedDispatch)
+                        <h6 class="fw-bold mb-3">Invoiced Items</h6>
+                        <div class="table-responsive mb-4">
+                            <table class="table table-bordered align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Product</th>
+                                        <th>Dispatched Qty</th>
+                                        <th width="180">Unit Rate (INR) *</th>
+                                        <th width="120">GST %</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($selectedDispatch->items as $idx => $it)
+                                        @php
+                                            $defaultRate = $it->salesOrderItem->rate ?? 500.00;
+                                            $defaultGst = $it->salesOrderItem->gst_rate ?? 18.00;
+                                        @endphp
+                                        <tr>
+                                            <td>
+                                                <div class="fw-bold">{{ $it->product->name ?? '-' }}</div>
+                                                <input type="hidden" name="items[{{ $idx }}][product_id]"
+                                                    value="{{ $it->product_id }}">
+                                                <input type="hidden" name="items[{{ $idx }}][quantity]" value="{{ $it->quantity }}">
+                                                <input type="hidden" name="items[{{ $idx }}][uom_id]" value="{{ $it->uom_id }}">
+                                            </td>
+                                            <td>{{ $it->quantity }} {{ $it->uom->symbol ?? '' }}</td>
+                                            <td><input type="number" step="0.01" min="0" name="items[{{ $idx }}][unit_price]"
+                                                    class="form-control form-control-sm"
+                                                    value="{{ number_format((float) $defaultRate, 2, '.', '') }}" required></td>
+                                            <td><input type="number" step="0.01" min="0" max="100"
+                                                    name="items[{{ $idx }}][tax_percent]" class="form-control form-control-sm"
+                                                    value="{{ number_format((float) $defaultGst, 2, '.', '') }}"></td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @else
+                        <div class="alert alert-light border small text-muted mb-4">
+                            <i class="bi bi-info-circle me-1"></i> Select a Delivery Dispatch Note above to load dispatched
+                            items for invoicing.
+                        </div>
+                    @endif
+
+                    <div class="d-flex justify-content-end gap-2">
+                        <a href="{{ route('sales.invoices.index') }}" class="btn btn-light">Cancel</a>
+                        <button type="submit" class="btn btn-primary-sattva">Generate Tax Invoice</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 
-    <div class="card card-sattva">
-        <div class="card-sattva-body p-4">
-            <form action="{{ route('sales.invoices.store') }}" method="POST">
-                @csrf
-                @if($selectedDispatch && $selectedDispatch->sales_order_id)
-                    <input type="hidden" name="sales_order_id" value="{{ $selectedDispatch->sales_order_id }}">
-                @endif
-
-                <div class="row g-3 mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label required">Delivery Dispatch Note</label>
-                        <select name="dispatch_id" class="form-select" onchange="loadInvoiceDispatch(this)" required>
-                            <option value="">Select Dispatch Challan</option>
-                            @foreach($dispatches as $d)
-                                <option value="{{ $d->id }}" {{ $selectedDispatch && $selectedDispatch->id == $d->id ? 'selected' : '' }}>
-                                    {{ $d->dispatch_number }} | {{ $d->customer->name ?? '' }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label required">Customer</label>
-                        <select name="customer_id" class="form-select" required>
-                            <option value="">Select Customer</option>
-                            @foreach($customers as $c)
-                                <option value="{{ $c->id }}" {{ $selectedDispatch && $selectedDispatch->customer_id == $c->id ? 'selected' : '' }}>{{ $c->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                </div>
-
-                <div class="row g-3 mb-4">
-                    <div class="col-md-4">
-                        <label class="form-label required">Invoice Date</label>
-                        <input type="date" name="invoice_date" class="form-control" required value="{{ old('invoice_date', date('Y-m-d')) }}">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label required">Due Date</label>
-                        <input type="date" name="due_date" class="form-control" required value="{{ old('due_date', date('Y-m-d', strtotime('+30 days'))) }}">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Payment Terms</label>
-                        <input type="text" name="payment_terms" class="form-control" value="{{ $selectedDispatch->salesOrder->payment_terms ?? 'Net 30 Days' }}" readonly>
-                    </div>
-                </div>
-
-                @if($selectedDispatch)
-                <h6 class="fw-bold mb-3">Invoiced Items</h6>
-                <div class="table-responsive mb-4">
-                    <table class="table table-bordered align-middle">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Product</th>
-                                <th>Dispatched Qty</th>
-                                <th width="180">Unit Rate (INR) *</th>
-                                <th width="120">GST %</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($selectedDispatch->items as $idx => $it)
-                            @php
-                                $defaultRate = $it->salesOrderItem->rate ?? 500.00;
-                                $defaultGst = $it->salesOrderItem->gst_rate ?? 18.00;
-                            @endphp
-                            <tr>
-                                <td>
-                                    <div class="fw-bold">{{ $it->product->name ?? '-' }}</div>
-                                    <input type="hidden" name="items[{{ $idx }}][product_id]" value="{{ $it->product_id }}">
-                                    <input type="hidden" name="items[{{ $idx }}][quantity]" value="{{ $it->quantity }}">
-                                    <input type="hidden" name="items[{{ $idx }}][uom_id]" value="{{ $it->uom_id }}">
-                                </td>
-                                <td>{{ $it->quantity }} {{ $it->uom->symbol ?? '' }}</td>
-                                <td><input type="number" step="0.01" min="0" name="items[{{ $idx }}][unit_price]" class="form-control form-control-sm" value="{{ number_format((float)$defaultRate, 2, '.', '') }}" required></td>
-                                <td><input type="number" step="0.01" min="0" max="100" name="items[{{ $idx }}][tax_percent]" class="form-control form-control-sm" value="{{ number_format((float)$defaultGst, 2, '.', '') }}"></td>
-                            </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-                @else
-                    <div class="alert alert-light border small text-muted mb-4">
-                        <i class="bi bi-info-circle me-1"></i> Select a Delivery Dispatch Note above to load dispatched items for invoicing.
-                    </div>
-                @endif
-
-                <div class="d-flex justify-content-end gap-2">
-                    <a href="{{ route('sales.invoices.index') }}" class="btn btn-light">Cancel</a>
-                    <button type="submit" class="btn btn-primary-sattva">Generate Tax Invoice</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<script>
-window.loadInvoiceDispatch = function (selectEl) {
-    const baseUrl = '{{ route('sales.invoices.create') }}';
-    const targetUrl = selectEl.value ? (baseUrl + '?dispatch_id=' + encodeURIComponent(selectEl.value)) : baseUrl;
-    if (selectEl.closest('#sattvaDynamicFormModal') && typeof window.openUrlInFormModal === 'function') {
-        window.openUrlInFormModal(targetUrl);
-    } else {
-        window.location.href = targetUrl;
-    }
-};
-</script>
+    <script>
+        window.loadInvoiceDispatch = function (selectEl) {
+            const baseUrl = '{{ route('sales.invoices.create') }}';
+            const targetUrl = selectEl.value ? (baseUrl + '?dispatch_id=' + encodeURIComponent(selectEl.value)) : baseUrl;
+            if (selectEl.closest('#sattvaDynamicFormModal') && typeof window.openUrlInFormModal === 'function') {
+                window.openUrlInFormModal(targetUrl);
+            } else {
+                window.location.href = targetUrl;
+            }
+        };
+    </script>
 @endsection

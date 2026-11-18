@@ -21,11 +21,9 @@
                 <div class="col-md-3">
                     <select name="category" class="form-select">
                         <option value="">All Categories</option>
-                        <option value="Electricity" {{ request('category') === 'Electricity' ? 'selected' : '' }}>Electricity (HT Power)</option>
-                        <option value="Boiler Fuel" {{ request('category') === 'Boiler Fuel' ? 'selected' : '' }}>Boiler Fuel / Steam</option>
-                        <option value="Direct Labor" {{ request('category') === 'Direct Labor' ? 'selected' : '' }}>Direct Factory Labor</option>
-                        <option value="Solvent Losses" {{ request('category') === 'Solvent Losses' ? 'selected' : '' }}>Solvent Evaporation Losses</option>
-                        <option value="QC & Lab Testing" {{ request('category') === 'QC & Lab Testing' ? 'selected' : '' }}>QC Consumables</option>
+                        @foreach(($categories ?? \App\Models\MonthlyExpense::CATEGORIES) as $key => $label)
+                            <option value="{{ $key }}" {{ request('category') === $key ? 'selected' : '' }}>{{ $label }}</option>
+                        @endforeach
                     </select>
                 </div>
                 <div class="col-md-2">
@@ -39,14 +37,17 @@
                 <div class="col-md-2">
                     <select name="year" class="form-select">
                         <option value="">All Years</option>
-                        <option value="2026" {{ request('year') == '2026' ? 'selected' : '' }}>2026</option>
+                        @foreach(($years ?? [date('Y')]) as $yr)
+                            <option value="{{ $yr }}" {{ (string) request('year') === (string) $yr ? 'selected' : '' }}>{{ $yr }}</option>
+                        @endforeach
                     </select>
                 </div>
                 <div class="col-md-2">
                     <select name="status" class="form-select">
                         <option value="">All Status</option>
+                        <option value="Draft" {{ request('status') === 'Draft' ? 'selected' : '' }}>Draft</option>
                         <option value="Approved" {{ request('status') === 'Approved' ? 'selected' : '' }}>Approved</option>
-                        <option value="Pending" {{ request('status') === 'Pending' ? 'selected' : '' }}>Pending</option>
+                        <option value="Posted" {{ request('status') === 'Posted' ? 'selected' : '' }}>Posted</option>
                     </select>
                 </div>
                 <div class="col-md-3 d-flex gap-2">
@@ -76,14 +77,30 @@
                     @forelse($expenses as $idx => $exp)
                     <tr>
                         <td>{{ $expenses->firstItem() + $idx }}</td>
-                        <td class="fw-bold font-monospace text-success">{{ $exp->voucher_no ?? 'EXP-'.str_pad($exp->id, 5, '0', STR_PAD_LEFT) }}</td>
+                        <td class="fw-bold font-monospace text-success">{{ $exp->expense_number ?? 'EXP-'.str_pad($exp->id, 5, '0', STR_PAD_LEFT) }}</td>
                         <td>{{ date('M', mktime(0,0,0,$exp->month,1)) }} {{ $exp->year }}</td>
                         <td><span class="badge bg-light text-dark border">{{ $exp->expense_category }}</span></td>
                         <td>{{ $exp->plant->name ?? 'All Plants' }}</td>
                         <td class="fw-bold text-dark">₹{{ number_format($exp->amount, 2) }}</td>
-                        <td><span class="badge-status badge-status-{{ strtolower($exp->status) }}">{{ $exp->status }}</span></td>
+                        <td>
+                            @if($exp->status === 'Draft')
+                                <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-3">Draft</span>
+                            @elseif($exp->status === 'Posted')
+                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3">Posted</span>
+                            @else
+                                <span class="badge-status badge-status-{{ strtolower($exp->status) }}">{{ $exp->status }}</span>
+                            @endif
+                        </td>
                         <td class="text-end">
-                            <a href="{{ route('costing.expenses.show', $exp) }}" class="btn btn-sm btn-icon btn-outline-secondary"><i class="bi bi-eye"></i></a>
+                            <div class="d-inline-flex gap-1">
+                                @if($exp->status === 'Draft')
+                                    <form action="{{ route('costing.expenses.approve', $exp) }}" method="POST" class="d-inline">
+                                        @csrf
+                                        <button type="submit" class="btn btn-sm btn-icon text-success" title="Approve Voucher"><i class="bi bi-check-circle"></i></button>
+                                    </form>
+                                @endif
+                                <a href="{{ route('costing.expenses.show', $exp) }}" class="btn btn-sm btn-icon btn-outline-secondary" title="View Voucher"><i class="bi bi-eye"></i></a>
+                            </div>
                         </td>
                     </tr>
                     @empty

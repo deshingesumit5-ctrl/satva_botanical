@@ -5,7 +5,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h2 class="page-title">Batch Cost Analysis: {{ $batch->batch_no ?? $batch->batch_number }}</h2>
-            <p class="page-subtitle">Product: <strong>{{ $batch->product->name ?? '-' }}</strong> | Actual Output: {{ $batch->actual_quantity ?? $batch->planned_quantity }} {{ $batch->uom->symbol ?? 'KG' }}</p>
+            <p class="page-subtitle">Product: <strong>{{ $batch->product->name ?? '-' }}</strong> | Output: {{ (float)$batch->actual_qty > 0 ? $batch->actual_qty : $batch->planned_qty }} {{ $batch->uom->symbol ?? 'KG' }}</p>
         </div>
         <a href="{{ route('costing.batch-cost.index') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i> Back to Costing</a>
     </div>
@@ -38,20 +38,28 @@
         <div class="card-sattva-body p-4">
             <ul class="list-group list-group-flush">
                 <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
-                    <span>Botanical Raw Materials Cost</span>
+                    <span>Botanical Raw Materials &amp; Direct Inputs Cost</span>
                     <span class="fw-bold">₹{{ number_format($cost->raw_material_cost ?? 0, 2) }}</span>
                 </li>
                 <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
-                    <span>Extraction Solvents & Reagents Consumed</span>
+                    <span>Extraction Solvents &amp; Reagents Consumed</span>
                     <span class="fw-bold">₹{{ number_format($cost->solvent_cost ?? 0, 2) }}</span>
                 </li>
                 <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
-                    <span>Allocated Electricity & Steam Utilities</span>
-                    <span class="fw-bold">₹{{ number_format($cost->utility_cost ?? 0, 2) }}</span>
+                    <span>Allocated Electricity Utilities</span>
+                    <span class="fw-bold">₹{{ number_format($cost->electricity_cost ?? 0, 2) }}</span>
                 </li>
                 <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
-                    <span>Allocated Plant Labor & Overheads</span>
-                    <span class="fw-bold">₹{{ number_format($cost->labor_cost ?? 0, 2) }}</span>
+                    <span>Allocated Maintenance &amp; Equipment Overheads</span>
+                    <span class="fw-bold">₹{{ number_format(($cost->maintenance_cost ?? 0) + ($cost->equipment_cost ?? 0), 2) }}</span>
+                </li>
+                <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                    <span>Allocated Miscellaneous &amp; Other Manufacturing Overheads</span>
+                    <span class="fw-bold">₹{{ number_format(($cost->misc_cost ?? 0) + ($cost->other_cost ?? 0), 2) }}</span>
+                </li>
+                <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                    <span>Allocated Plant Labour</span>
+                    <span class="fw-bold">₹{{ number_format($cost->labour_cost ?? 0, 2) }}</span>
                 </li>
             </ul>
         </div>

@@ -35,15 +35,19 @@
                             <td class="fw-bold text-success">₹{{ number_format($ue->total_amount, 2) }}</td>
                             <td>{{ $ue->voucher_count }} vouchers</td>
                             <td class="text-end">
-                                <form action="{{ route('costing.allocation.save') }}" method="POST" class="d-inline">
-                                    @csrf
-                                    <input type="hidden" name="month" value="{{ $ue->month }}">
-                                    <input type="hidden" name="year" value="{{ $ue->year }}">
-                                    <input type="hidden" name="expense_category" value="{{ $ue->expense_category }}">
-                                    <button type="submit" class="btn btn-sm btn-primary-sattva">
-                                        <i class="bi bi-distribute-vertical me-1"></i> Allocate to Batches
-                                    </button>
-                                </form>
+                                @if(!empty($ue->already_allocated))
+                                    <span class="badge bg-secondary-subtle text-secondary border px-3 py-2">Already Allocated</span>
+                                @else
+                                    <form action="{{ route('costing.allocation.save') }}" method="POST" class="d-inline">
+                                        @csrf
+                                        <input type="hidden" name="month" value="{{ $ue->month }}">
+                                        <input type="hidden" name="year" value="{{ $ue->year }}">
+                                        <input type="hidden" name="expense_category" value="{{ $ue->expense_category }}">
+                                        <button type="submit" class="btn btn-sm btn-primary-sattva">
+                                            <i class="bi bi-distribute-vertical me-1"></i> Allocate to Batches
+                                        </button>
+                                    </form>
+                                @endif
                             </td>
                         </tr>
                         @empty
@@ -77,8 +81,8 @@
                         <td>{{ $allocations->firstItem() + $idx }}</td>
                         <td class="fw-bold">{{ date('F', mktime(0,0,0,$alloc->month,1)) }} {{ $alloc->year }}</td>
                         <td><span class="badge bg-light text-dark border">{{ $alloc->expense_category }}</span></td>
-                        <td class="fw-bold text-success">₹{{ number_format($alloc->total_amount, 2) }}</td>
-                        <td><span class="badge bg-light text-dark border">{{ $alloc->items->count() }} Batches</span></td>
+                        <td class="fw-bold text-success">₹{{ number_format($alloc->total_expense, 2) }}</td>
+                        <td><span class="badge bg-light text-dark border">{{ $alloc->items->count() ?: $alloc->eligible_batch_count }} Batches</span></td>
                         <td>{{ $alloc->allocatedByUser->name ?? 'System' }}</td>
                         <td>{{ $alloc->created_at->format('d-m-Y H:i') }}</td>
                     </tr>
@@ -88,6 +92,12 @@
                 </tbody>
             </table>
         </div>
+        @if($allocations->hasPages())
+        <div class="card-footer bg-white d-flex justify-content-between align-items-center py-2">
+            <span class="text-muted small">Showing {{ $allocations->firstItem() }} to {{ $allocations->lastItem() }} of {{ $allocations->total() }}</span>
+            {{ $allocations->links() }}
+        </div>
+        @endif
     </div>
 </div>
 @endsection

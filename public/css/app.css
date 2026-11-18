@@ -552,7 +552,7 @@ body {
     box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.08) !important;
 }
 
-/* Header icon buttons: bell, profile, settings, full screen */
+/* Header icon buttons: bell, profile, settings */
 .header-icon-btn {
     width: 38px;
     height: 38px;
@@ -574,16 +574,39 @@ body {
     color: #ffffff;
 }
 
-.header-icon-btn .bi-person-circle {
-    font-size: 1.55rem;
+.header-icon-btn i {
+    font-size: 1.15rem;
+    line-height: 1;
 }
 
 .header-icon-btn img {
-    width: 32px;
-    height: 32px;
+    width: 22px;
+    height: 22px;
     border-radius: 50%;
     object-fit: cover;
     border: 2px solid #34d399;
+}
+
+.notif-badge {
+    position: absolute;
+    top: 2px;
+    right: 1px;
+    min-width: 17px;
+    height: 17px;
+    padding: 0 5px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid var(--navy-header);
+    pointer-events: none;
+}
+
+.notif-badge-mobile {
+    top: 1px;
+    right: 0;
 }
 
 /* Page Title Logo Badge */

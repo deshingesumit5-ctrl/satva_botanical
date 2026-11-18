@@ -10,7 +10,7 @@ class CostReportController extends Controller
 {
     public function index(Request $request)
     {
-        $query = BatchCost::with(['batch.product']);
+        $query = BatchCost::with(['batch.product', 'batch.consumptions.material', 'batch.consumptions.stockLot']);
 
         $costs = $query->latest()->paginate(25)->withQueryString();
 
@@ -19,7 +19,7 @@ class CostReportController extends Controller
 
     public function export(Request $request)
     {
-        $costs = BatchCost::with(['batch.product'])->get();
+        $costs = BatchCost::with(['batch.product', 'batch.consumptions.material', 'batch.consumptions.stockLot'])->get();
 
         $headers = [
             'Content-Type' => 'text/csv',

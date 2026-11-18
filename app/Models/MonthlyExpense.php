@@ -6,11 +6,21 @@ use Illuminate\Database\Eloquent\Model;
 
 class MonthlyExpense extends Model
 {
+    public const CATEGORIES = [
+        'Electricity' => 'Electricity (HT Power / Substation)',
+        'Labour' => 'Labour (Direct Plant Labor)',
+        'Equipment-related' => 'Equipment-related (Machinery & Tooling)',
+        'Maintenance' => 'Maintenance (Plant & Boiler Upkeep)',
+        'Miscellaneous' => 'Miscellaneous (QC & General Overheads)',
+        'Other Manufacturing Expenses' => 'Other Manufacturing Expenses',
+    ];
+
     protected $guarded = [];
 
     protected $casts = [
         'amount' => 'decimal:2',
         'entry_date' => 'date',
+        'approved_at' => 'datetime',
         'posted_at' => 'datetime',
         'month' => 'integer',
         'year' => 'integer',

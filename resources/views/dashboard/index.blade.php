@@ -5,51 +5,10 @@
 @section('content')
 <div class="container-fluid px-0">
 
-    <!-- Top Greeting & Header Bar -->
-    <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between mb-4 pb-2 border-bottom">
-        <div>
-            <div class="text-muted small fw-semibold">Sattva Botanical Manufacturing Unit</div>
-            <h2 class="fw-bold mb-1" style="color: #0f172a;">Hello, {{ auth()->user()->name }}</h2>
-            <p class="text-muted small mb-0">All manufacturing, inventory, quality control, commercial, and costing analytics shown below are live.</p>
-        </div>
-
-        <!-- Filter Row -->
-        <div class="mt-3 mt-lg-0">
-            <form action="{{ route('dashboard') }}" method="GET" class="row g-2 align-items-center">
-                <div class="col-auto">
-                    <label class="small text-muted d-block">Customer :</label>
-                    <select name="customer_id" class="form-select form-select-sm" style="min-width: 170px;">
-                        <option value="">Select Customer</option>
-                        @foreach($customers as $c)
-                            <option value="{{ $c->id }}" {{ $customerId == $c->id ? 'selected' : '' }}>{{ $c->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-auto">
-                    <label class="small text-muted d-block">From Date :</label>
-                    <input type="date" name="from_date" value="{{ $fromDate }}" class="form-control form-control-sm">
-                </div>
-                <div class="col-auto">
-                    <label class="small text-muted d-block">To Date :</label>
-                    <input type="date" name="to_date" value="{{ $toDate }}" class="form-control form-control-sm">
-                </div>
-                <div class="col-auto align-self-end">
-                    <button type="submit" class="btn btn-dark-filter btn-sm px-3">
-                        <i class="bi bi-funnel me-1"></i> Filter
-                    </button>
-                    @if($customerId || $fromDate || $toDate)
-                        <a href="{{ route('dashboard') }}" class="btn btn-outline-secondary btn-sm ms-1">Reset</a>
-                    @endif
-                </div>
-            </form>
-        </div>
-    </div>
-
     <!-- Section 32.1: Management Dashboard (All 18 Real Live Module KPIs) -->
     <div class="card card-sattva mb-4">
         <div class="card-sattva-header d-flex align-items-center justify-content-between">
-            <span class="fw-bold text-dark"><i class="bi bi-bar-chart-line text-success me-2"></i>Management Overview (Live Module Metrics)</span>
-            <span class="small text-muted">Real-time database totals</span>
+            <span class="fw-bold text-dark"><i class="bi bi-bar-chart-line text-success me-2"></i>Management Overview</span>
         </div>
         <div class="card-sattva-body">
             <div class="row g-3">

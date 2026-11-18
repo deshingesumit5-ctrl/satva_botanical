@@ -436,19 +436,17 @@
                 </ul>
 
                 <!-- Right Header Actions -->
-                <div class="d-flex align-items-center gap-1">
+                <div class="d-flex align-items-center gap-1 ms-auto">
 
                     <!-- 1. Notification Bell -->
                     @php
-                        $unreadNotifCount = $authUser ? $authUser->notifications()->where('is_read', false)->count() : 0;
+                        $unreadNotifCount = $authUser ? \App\Services\NotificationService::unreadCountForUser($authUser) : 0;
                     @endphp
-                    <a href="{{ route('notifications.index') }}" class="header-icon-btn position-relative"
-                        title="Notifications">
+                    <a href="{{ route('notifications.index') }}" id="desktopNotifBtn"
+                        class="header-icon-btn position-relative" title="Notifications">
                         <i class="bi bi-bell"></i>
-                        @if($unreadNotifCount > 0)
-                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
-                                style="font-size:0.65rem;">{{ $unreadNotifCount }}</span>
-                        @endif
+                        <span id="desktopNotifBadge"
+                            class="notif-badge badge rounded-pill bg-danger {{ $unreadNotifCount > 0 ? '' : 'd-none' }}">{{ $unreadNotifCount > 99 ? '99+' : $unreadNotifCount }}</span>
                     </a>
 
                     <!-- 2. Profile icon -->
@@ -507,11 +505,6 @@
                             </ul>
                         </div>
                     @endif
-
-                    <!-- 4. Fullscreen -->
-                    <button type="button" class="header-icon-btn" onclick="toggleFullscreen()" title="Full screen">
-                        <i class="bi bi-arrows-fullscreen"></i>
-                    </button>
                 </div>
             </div>
         </div>
@@ -535,13 +528,11 @@
             </div>
         </a>
         <div class="d-flex align-items-center gap-1">
-            <a href="{{ route('notifications.index') }}"
-                class="btn btn-sm btn-outline-light border-0 position-relative p-2">
+            <a href="{{ route('notifications.index') }}" id="mobileNotifBtn"
+                class="btn btn-sm btn-outline-light border-0 position-relative p-2" title="Notifications">
                 <i class="bi bi-bell fs-5"></i>
-                @if(isset($unreadNotifCount) && $unreadNotifCount > 0)
-                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
-                        style="font-size:0.6rem;">{{ $unreadNotifCount }}</span>
-                @endif
+                <span id="mobileNotifBadge"
+                    class="notif-badge notif-badge-mobile badge rounded-pill bg-danger {{ isset($unreadNotifCount) && $unreadNotifCount > 0 ? '' : 'd-none' }}">{{ isset($unreadNotifCount) && $unreadNotifCount > 99 ? '99+' : ($unreadNotifCount ?? 0) }}</span>
             </a>
             @if($authUser)
                 <a href="javascript:void(0)" onclick="confirmLogout()"
@@ -1159,6 +1150,68 @@
                     }
                 }
             }, true);
+        })();
+
+        // =========================================================================
+        // Real-time Notification Badge Polling & Click Clear
+        // =========================================================================
+        (function () {
+            const countUrl = @json($authUser ? route('notifications.count') : null);
+            const badges = [
+                document.getElementById('desktopNotifBadge'),
+                document.getElementById('mobileNotifBadge'),
+            ].filter(Boolean);
+            const buttons = [
+                document.getElementById('desktopNotifBtn'),
+                document.getElementById('mobileNotifBtn'),
+            ].filter(Boolean);
+
+            function setNotificationCount(count) {
+                const n = Number(count) || 0;
+                const label = n > 99 ? '99+' : String(n);
+                badges.forEach(function (badge) {
+                    badge.textContent = label;
+                    if (n > 0) {
+                        badge.classList.remove('d-none');
+                    } else {
+                        badge.classList.add('d-none');
+                    }
+                });
+            }
+
+            buttons.forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    setNotificationCount(0);
+                });
+            });
+
+            if (!countUrl || badges.length === 0) return;
+
+            let isFetching = false;
+            function refreshNotificationCount() {
+                if (isFetching || document.hidden) return;
+                isFetching = true;
+                fetch(countUrl, {
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    credentials: 'same-origin'
+                })
+                    .then(function (res) { return res.ok ? res.json() : null; })
+                    .then(function (data) {
+                        if (data && typeof data.count !== 'undefined') {
+                            setNotificationCount(data.count);
+                        }
+                    })
+                    .catch(function () {})
+                    .finally(function () { isFetching = false; });
+            }
+
+            setInterval(refreshNotificationCount, 15000);
+            document.addEventListener('visibilitychange', function () {
+                if (!document.hidden) {
+                    refreshNotificationCount();
+                }
+            });
+            window.addEventListener('focus', refreshNotificationCount);
         })();
 
         function confirmLogout() {
