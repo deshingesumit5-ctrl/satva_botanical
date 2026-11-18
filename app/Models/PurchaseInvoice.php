@@ -45,4 +45,29 @@ class PurchaseInvoice extends Model
     {
         return $this->belongsTo(User::class, 'created_by');
     }
+
+    public function getBillNumberAttribute()
+    {
+        return $this->attributes['internal_invoice_number'] ?? null;
+    }
+
+    public function getInvoiceNumberAttribute()
+    {
+        return $this->attributes['supplier_invoice_number'] ?? null;
+    }
+
+    public function getStatusAttribute()
+    {
+        return $this->attributes['payment_status'] ?? 'Unpaid';
+    }
+
+    public function getSubtotalAttribute()
+    {
+        return $this->attributes['taxable_amount'] ?? 0;
+    }
+
+    public function getGrandTotalAttribute()
+    {
+        return $this->attributes['total_amount'] ?? 0;
+    }
 }

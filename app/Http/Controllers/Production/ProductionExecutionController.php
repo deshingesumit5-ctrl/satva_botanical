@@ -21,6 +21,7 @@ use App\Services\ProductionService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class ProductionExecutionController extends Controller
 {
@@ -119,8 +120,8 @@ class ProductionExecutionController extends Controller
                 ?? $stageExecutions->first();
         }
 
-        // Sync missing stage activities, parameter readings, and material charges from RecipeStage
-        if ($activeExecution && $activeExecution->recipeStage) {
+        // Sync missing stage activities, parameter readings, and material charges from RecipeStage only for editable stages
+        if ($activeExecution && $activeExecution->recipeStage && !in_array($activeExecution->status, ['Completed', 'Approved', 'Skipped', 'QC Pending'], true)) {
             $recipeStage = $activeExecution->recipeStage()->with([
                 'activities.activity',
                 'parameters.parameter',
@@ -204,7 +205,7 @@ class ProductionExecutionController extends Controller
                     'outputs',
                     'recipeStage.outputMaterials',
                     'authorizedByUser',
-                    'qcRequest',
+                    'qcRequest.submittedByUser',
                 ]);
             }
         }
@@ -224,18 +225,20 @@ class ProductionExecutionController extends Controller
         $materials = Material::where('status', 'Active')->orderBy('name')->get();
         $products = Product::where('status', 'Active')->orderBy('name')->get();
 
-        return view('production.execution.show', compact(
-            'batch',
-            'stageExecutions',
-            'activeExecution',
-            'stageLockStates',
-            'completionEvaluation',
-            'equipments',
-            'warehouses',
-            'uoms',
-            'materials',
-            'products'
-        ));
+        return response()
+            ->view('production.execution.show', compact(
+                'batch',
+                'stageExecutions',
+                'activeExecution',
+                'stageLockStates',
+                'completionEvaluation',
+                'equipments',
+                'warehouses',
+                'uoms',
+                'materials',
+                'products'
+            ))
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
     }
 
     public function startStage(Request $request, Batch $batch, BatchStageExecution $stageExecution)
@@ -259,8 +262,8 @@ class ProductionExecutionController extends Controller
     protected function persistStageData(Request $request, Batch $batch, BatchStageExecution $stageExecution): void
     {
         // 1. Update Equipment, Hold Time & Clearance (Section A)
-        if ($request->has('equipment_id') && $request->input('equipment_id')) {
-            $stageExecution->equipment_id = $request->input('equipment_id');
+        if ($request->has('equipment_id')) {
+            $stageExecution->equipment_id = $request->input('equipment_id') ?: null;
         }
         if ($request->has('line_clearance_by') || $request->has('actual_operator_name')) {
             $stageExecution->actual_operator_name = $request->input('line_clearance_by') ?? $request->input('actual_operator_name') ?? $stageExecution->actual_operator_name;
@@ -268,8 +271,9 @@ class ProductionExecutionController extends Controller
         if ($request->has('operator_count')) {
             $stageExecution->operator_count = $request->input('operator_count', $stageExecution->operator_count);
         }
-        if ($request->has('actual_hold_time_minutes') && $request->input('actual_hold_time_minutes') !== null && $request->input('actual_hold_time_minutes') !== '') {
-            $stageExecution->actual_hold_time_minutes = (int) $request->input('actual_hold_time_minutes');
+        if ($request->has('actual_hold_time_minutes')) {
+            $holdVal = $request->input('actual_hold_time_minutes');
+            $stageExecution->actual_hold_time_minutes = ($holdVal !== null && $holdVal !== '') ? (int) $holdVal : null;
         }
         if ($request->has('supervisor_remarks')) {
             $stageExecution->supervisor_remarks = $request->input('supervisor_remarks');
@@ -285,20 +289,28 @@ class ProductionExecutionController extends Controller
                 $endDt = !empty($data['end_datetime']) ? $data['end_datetime'] : null;
                 $act->start_datetime = $startDt;
                 $act->end_datetime = $endDt;
-                $act->operator_name = $data['operator_name'] ?? $act->operator_name;
-                $act->remarks = $data['remarks'] ?? $act->remarks;
+                if (array_key_exists('operator_name', $data)) {
+                    $act->operator_name = $data['operator_name'];
+                }
+                if (array_key_exists('remarks', $data)) {
+                    $act->remarks = $data['remarks'];
+                }
 
                 if ($startDt && $endDt) {
                     $act->status = 'Completed';
                     $act->actual_duration_minutes = max(0, Carbon::parse($startDt)->diffInMinutes(Carbon::parse($endDt), false));
                 } elseif ($startDt) {
                     $act->status = 'In Progress';
+                    $act->actual_duration_minutes = 0;
+                } else {
+                    $act->status = 'Pending';
+                    $act->actual_duration_minutes = 0;
                 }
                 $act->save();
             }
         }
 
-        // 3. Update Parameters / Readings (Section B) — never auto-correct out-of-range readings!
+        // 3. Update Parameters / Readings (Section C) — never auto-correct out-of-range readings!
         $parameters = $request->input('parameters', []);
         foreach ($parameters as $key => $data) {
             $readingId = $data['id'] ?? $key;
@@ -325,18 +337,22 @@ class ProductionExecutionController extends Controller
                         $within = false;
                     }
                     $reading->is_within_range = $within;
+                } elseif ($reading->actual_value === null) {
+                    $reading->is_within_range = true;
                 }
                 $reading->save();
             }
         }
 
-        // 4. Update Material Charges & Consumptions (Section C)
+        // 4. Update Material Charges & Consumptions (Section D)
         $materialsInput = $request->input('materials', []);
         foreach ($materialsInput as $key => $mData) {
             $consId = $mData['id'] ?? $key;
             $cons = BatchMaterialConsumption::find($consId);
             if ($cons && $cons->batch_id === $batch->id) {
-                $actualQty = isset($mData['actual_quantity']) ? (float) $mData['actual_quantity'] : (float) $cons->actual_consumed_qty;
+                $actualQty = isset($mData['actual_quantity']) && $mData['actual_quantity'] !== ''
+                    ? (float) $mData['actual_quantity']
+                    : 0.0;
                 $cons->actual_consumed_qty = $actualQty;
                 $cons->net_consumed_qty = max(0, $actualQty - (float) $cons->returned_qty);
                 $cons->entered_by = Auth::id() ?? $cons->entered_by;
@@ -344,7 +360,7 @@ class ProductionExecutionController extends Controller
             }
         }
 
-        // 5. Update Intermediate Yield, Solvent Recovery & Spent Herb (Section D)
+        // 5. Update Intermediate Yield, Solvent Recovery & Spent Herb (Section E)
         $defaultUomId = $batch->uom_id ?? Uom::value('id');
         $ltrUomId = Uom::where('uom_code', 'LTR')->value('id') ?? $defaultUomId;
         $kgUomId = Uom::where('uom_code', 'KG')->value('id') ?? $defaultUomId;
@@ -353,6 +369,9 @@ class ProductionExecutionController extends Controller
             $outQty = (float) $request->input('output_quantity', 0);
             $maxSeq = (int) $batch->stageExecutions()->max('sequence_no');
             $outType = ($stageExecution->sequence_no >= $maxSeq) ? 'Finished' : 'WIP';
+            $existingOut = BatchStageOutput::where('batch_stage_execution_id', $stageExecution->id)
+                ->where('output_type', $outType)
+                ->first();
             if ($outQty > 0) {
                 BatchStageOutput::updateOrCreate(
                     [
@@ -366,11 +385,17 @@ class ProductionExecutionController extends Controller
                         'uom_id'      => $defaultUomId,
                     ]
                 );
+            } elseif ($existingOut) {
+                $existingOut->actual_qty = 0;
+                $existingOut->save();
             }
         }
 
         if ($request->has('solvent_recovered_qty')) {
             $solvQty = (float) $request->input('solvent_recovered_qty', 0);
+            $existingSolv = BatchStageOutput::where('batch_stage_execution_id', $stageExecution->id)
+                ->where('output_type', 'Recovered')
+                ->first();
             if ($solvQty > 0) {
                 $solventMatId = Material::where('material_category', 'Solvent')->value('id');
                 BatchStageOutput::updateOrCreate(
@@ -385,11 +410,17 @@ class ProductionExecutionController extends Controller
                         'uom_id'      => $ltrUomId,
                     ]
                 );
+            } elseif ($existingSolv) {
+                $existingSolv->actual_qty = 0;
+                $existingSolv->save();
             }
         }
 
         if ($request->has('spent_herb_qty')) {
             $spentQty = (float) $request->input('spent_herb_qty', 0);
+            $existingSpent = BatchStageOutput::where('batch_stage_execution_id', $stageExecution->id)
+                ->where('output_type', 'Spent')
+                ->first();
             if ($spentQty > 0) {
                 BatchStageOutput::updateOrCreate(
                     [
@@ -402,23 +433,106 @@ class ProductionExecutionController extends Controller
                         'uom_id'      => $kgUomId,
                     ]
                 );
+            } elseif ($existingSpent) {
+                $existingSpent->actual_qty = 0;
+                $existingSpent->save();
             }
         }
+    }
+
+    protected function buildExecutionFeedbackPayload(Batch $batch, BatchStageExecution $stageExecution, array $evaluation): array
+    {
+        $stageExecution->loadMissing([
+            'recipeStage',
+            'authorizedByUser',
+            'qcRequest.submittedByUser',
+            'activityExecutions',
+            'parameterReadings',
+        ]);
+
+        $stageHistory = $batch->stageExecutions()
+            ->where('recipe_stage_id', $stageExecution->recipe_stage_id)
+            ->orderBy('execution_number')
+            ->get();
+
+        $checklistHtml = view('production.execution._checklist', [
+            'batch'                => $batch,
+            'activeExecution'      => $stageExecution,
+            'completionEvaluation' => $evaluation,
+            'stageHistory'         => $stageHistory,
+        ])->render();
+
+        $parameterStatuses = [];
+        foreach ($stageExecution->parameterReadings as $r) {
+            $parameterStatuses[$r->id] = [
+                'actual_value'    => $r->actual_value,
+                'is_within_range' => (bool) $r->is_within_range,
+            ];
+        }
+
+        $activityStatuses = [];
+        foreach ($stageExecution->activityExecutions as $a) {
+            $activityStatuses[$a->id] = $a->status;
+        }
+
+        return [
+            'evaluation'         => $evaluation,
+            'checklist_html'     => $checklistHtml,
+            'parameter_statuses' => $parameterStatuses,
+            'activity_statuses'  => $activityStatuses,
+        ];
     }
 
     public function saveStage(Request $request, Batch $batch, BatchStageExecution $stageExecution)
     {
         $lock = $this->productionService->getStageLockState($batch, $stageExecution);
         if ($lock['locked']) {
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => "Stage Locked: {$lock['tooltip']}"], 403);
+            }
             return response()->view('errors.403', [
                 'message'        => "Stage Locked: {$lock['tooltip']}",
                 'permissionCode' => $lock['tooltip'],
             ], 403);
         }
 
-        $this->persistStageData($request, $batch, $stageExecution);
+        if (in_array($stageExecution->status, ['QC Pending', 'Completed', 'Approved', 'Skipped'], true)) {
+            $msg = "Stage '{$stageExecution->stage_name}' is {$stageExecution->status} and cannot be edited.";
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => $msg], 422);
+            }
+            return back()->with('error', $msg);
+        }
+
+        DB::transaction(function () use ($request, $batch, $stageExecution) {
+            $this->persistStageData($request, $batch, $stageExecution);
+        });
 
         AuditService::log('production', $batch->batch_no ?? $batch->batch_number, 'save_stage_execution', null, null, "Saved progress for stage {$stageExecution->stage_name}");
+
+        if ($request->expectsJson()) {
+            $freshExec = $stageExecution->fresh([
+                'recipeStage.activities.activity',
+                'recipeStage.parameters.parameter',
+                'recipeStage.inputMaterials.material',
+                'recipeStage.outputMaterials',
+                'recipeStage.qcTests',
+                'activityExecutions.recipeStageActivity',
+                'parameterReadings.recipeParameter.parameter',
+                'outputs',
+                'qcRequest.submittedByUser',
+                'authorizedByUser',
+            ]);
+            $evaluation = $this->productionService->evaluateStageCompletion($freshExec);
+            $payload = $this->buildExecutionFeedbackPayload($batch, $freshExec, $evaluation);
+
+            return response()->json(array_merge([
+                'success'  => true,
+                'saved'    => true,
+                'saved_at' => now()->format('H:i'),
+                'message'  => 'Stage progress saved.',
+            ], $payload));
+        }
 
         return redirect()->route('production.execution.show', ['batch' => $batch->id, 'stage_execution_id' => $stageExecution->id])
             ->with('success', 'Stage progress saved.');
@@ -428,29 +542,154 @@ class ProductionExecutionController extends Controller
     {
         $lock = $this->productionService->getStageLockState($batch, $stageExecution);
         if ($lock['locked']) {
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => "Stage Locked: {$lock['tooltip']}"], 403);
+            }
             return response()->view('errors.403', [
                 'message'        => "Stage Locked: {$lock['tooltip']}",
                 'permissionCode' => $lock['tooltip'],
             ], 403);
         }
 
-        $this->persistStageData($request, $batch, $stageExecution);
+        if (in_array($stageExecution->status, ['QC Pending', 'Completed', 'Approved', 'Skipped'], true)) {
+            $msg = "Stage '{$stageExecution->stage_name}' is already {$stageExecution->status}.";
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'completed' => false, 'message' => $msg], 422);
+            }
+            return back()->with('error', $msg);
+        }
 
         $outputs = $request->input('outputs', []);
         $remarks = $request->input('supervisor_remarks');
 
         try {
-            $this->productionService->completeStage($stageExecution, $outputs, $remarks);
+            $txResult = DB::transaction(function () use ($request, $batch, $stageExecution, $outputs, $remarks) {
+                $lockedExec = BatchStageExecution::where('id', $stageExecution->id)->lockForUpdate()->firstOrFail();
 
-            $stageExecution->refresh();
-            if ($stageExecution->status === 'QC Pending') {
-                return redirect()->route('production.execution.show', ['batch' => $batch->id, 'stage_execution_id' => $stageExecution->id])
-                    ->with('warning', "Stage '{$stageExecution->stage_name}' submitted to QC Pending. Next stage remains locked until QC Approves.");
+                if (in_array($lockedExec->status, ['QC Pending', 'Completed', 'Approved', 'Skipped'], true)) {
+                    return [
+                        'already_processed' => true,
+                        'completed'         => false,
+                        'status'            => $lockedExec->status,
+                    ];
+                }
+
+                // Step 1: Save all on-screen data first
+                $this->persistStageData($request, $batch, $lockedExec);
+
+                // Step 2: Evaluate all completion requirements
+                $freshExec = $lockedExec->fresh([
+                    'recipeStage.activities.activity',
+                    'recipeStage.parameters.parameter',
+                    'recipeStage.inputMaterials.material',
+                    'recipeStage.outputMaterials',
+                    'recipeStage.qcTests',
+                    'activityExecutions.recipeStageActivity',
+                    'parameterReadings.recipeParameter.parameter',
+                    'outputs',
+                    'qcRequest.submittedByUser',
+                    'authorizedByUser',
+                ]);
+                $evaluation = $this->productionService->evaluateStageCompletion($freshExec);
+
+                if (!empty($evaluation['operational_unmet']) && empty($outputs)) {
+                    // Commit the saved screen data, do NOT complete the stage
+                    return [
+                        'completed'  => false,
+                        'evaluation' => $evaluation,
+                        'execution'  => $freshExec,
+                    ];
+                }
+
+                // Step 3: Complete stage (or move to QC Pending) in the same transaction
+                $this->productionService->completeStage($freshExec, $outputs, $remarks);
+                $afterExec = $freshExec->fresh();
+
+                return [
+                    'completed'  => true,
+                    'execution'  => $afterExec,
+                    'evaluation' => $this->productionService->evaluateStageCompletion($afterExec),
+                ];
+            });
+
+            if (!empty($txResult['already_processed'])) {
+                $msg = "Stage '{$stageExecution->stage_name}' is already {$txResult['status']}.";
+                if ($request->expectsJson()) {
+                    return response()->json(['success' => false, 'completed' => false, 'message' => $msg], 409);
+                }
+                return back()->with('warning', $msg);
             }
 
-            return redirect()->route('production.execution.show', ['batch' => $batch->id])
-                ->with('success', "Stage '{$stageExecution->stage_name}' completed and next stage unlocked.");
+            if (!$txResult['completed']) {
+                $evaluation = $txResult['evaluation'];
+                $unmetCount = count($evaluation['operational_unmet']);
+                $msg = "Cannot complete yet: {$unmetCount} requirement(s) not met";
+
+                if ($request->expectsJson()) {
+                    $payload = $this->buildExecutionFeedbackPayload($batch, $txResult['execution'], $evaluation);
+                    return response()->json(array_merge([
+                        'success'     => false,
+                        'saved'       => true,
+                        'saved_at'    => now()->format('H:i'),
+                        'completed'   => false,
+                        'unmet_count' => $unmetCount,
+                        'message'     => $msg,
+                    ], $payload), 422);
+                }
+
+                return back()->withInput()->with('error', $msg);
+            }
+
+            $afterExec = $txResult['execution'];
+            if ($afterExec->status === 'QC Pending') {
+                $msg = "Stage '{$afterExec->stage_name}' submitted to QC Pending. Next stage remains locked until QC Approves.";
+                $redirectUrl = route('production.execution.show', ['batch' => $batch->id, 'stage_execution_id' => $afterExec->id]);
+
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success'      => true,
+                        'saved'        => true,
+                        'completed'    => true,
+                        'qc_pending'   => true,
+                        'message'      => $msg,
+                        'redirect_url' => $redirectUrl,
+                    ]);
+                }
+
+                return redirect($redirectUrl)->with('warning', $msg);
+            }
+
+            $msg = "Stage '{$afterExec->stage_name}' completed and next stage unlocked.";
+            $redirectUrl = route('production.execution.show', ['batch' => $batch->id]);
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success'      => true,
+                    'saved'        => true,
+                    'completed'    => true,
+                    'qc_pending'   => false,
+                    'message'      => $msg,
+                    'redirect_url' => $redirectUrl,
+                ]);
+            }
+
+            return redirect($redirectUrl)->with('success', $msg);
         } catch (\Exception $e) {
+            if ($request->expectsJson()) {
+                $freshExec = $stageExecution->fresh();
+                $evaluation = $this->productionService->evaluateStageCompletion($freshExec);
+                $unmetCount = count($evaluation['operational_unmet'] ?? []);
+                $msg = $unmetCount > 0 ? "Cannot complete yet: {$unmetCount} requirement(s) not met" : $e->getMessage();
+                $payload = $this->buildExecutionFeedbackPayload($batch, $freshExec, $evaluation);
+                return response()->json(array_merge([
+                    'success'     => false,
+                    'saved'       => true,
+                    'saved_at'    => now()->format('H:i'),
+                    'completed'   => false,
+                    'unmet_count' => $unmetCount,
+                    'message'     => $msg,
+                ], $payload), 422);
+            }
             return back()->withInput()->with('error', $e->getMessage());
         }
     }

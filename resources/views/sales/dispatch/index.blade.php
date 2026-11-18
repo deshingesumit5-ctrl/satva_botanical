@@ -32,10 +32,16 @@
                     <tr>
                         <td>{{ $dispatches->firstItem() + $idx }}</td>
                         <td class="fw-bold font-monospace text-success">{{ $d->dispatch_number }}</td>
-                        <td>{{ $d->created_at->format('d-m-Y') }}</td>
+                        <td>{{ $d->dispatch_date ? \Carbon\Carbon::parse($d->dispatch_date)->format('d-m-Y') : $d->created_at->format('d-m-Y') }}</td>
                         <td class="fw-semibold text-dark">{{ $d->customer->name ?? '-' }}</td>
-                        <td><a href="{{ route('sales.orders.show', $d->salesOrder) }}" class="badge bg-light text-dark border">{{ $d->salesOrder->order_number ?? '-' }}</a></td>
-                        <td>{{ $d->transporter_name ?? '-' }} ({{ $d->vehicle_number ?? '-' }})</td>
+                        <td>
+                            @if($d->salesOrder)
+                                <a href="{{ route('sales.orders.show', $d->salesOrder) }}" class="badge bg-light text-dark border">{{ $d->salesOrder->so_number }}</a>
+                            @else
+                                -
+                            @endif
+                        </td>
+                        <td>{{ $d->transport_details ?? '-' }} ({{ $d->vehicle_number ?? '-' }})</td>
                         <td><span class="badge-status badge-status-{{ strtolower($d->status) }}">{{ $d->status }}</span></td>
                         <td class="text-end">
                             <a href="{{ route('sales.dispatch.show', $d) }}" class="btn btn-sm btn-icon btn-outline-secondary me-1"><i class="bi bi-eye"></i></a>

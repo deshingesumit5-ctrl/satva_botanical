@@ -28,10 +28,12 @@
             </div>
         </div>
         <div class="col-6 col-md-3">
-            <div class="card card-sattva p-3 border-start border-4 border-warning">
-                <span class="text-muted small">Batches On Hold</span>
-                <div class="h3 fw-bold text-warning mb-0 mt-1">{{ $onHoldCount ?? 0 }}</div>
-            </div>
+            <a href="{{ route('production.batches.index', ['status' => 'QC Pending']) }}" class="text-decoration-none">
+                <div class="card card-sattva p-3 border-start border-4 border-warning">
+                    <span class="text-muted small">QC Pending Batches</span>
+                    <div class="h3 fw-bold text-warning mb-0 mt-1">{{ $qcPendingBatchesCount ?? $pendingQcCount ?? 0 }}</div>
+                </div>
+            </a>
         </div>
         <div class="col-6 col-md-3">
             <div class="card card-sattva p-3 border-start border-4 border-info">

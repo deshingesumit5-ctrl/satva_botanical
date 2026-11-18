@@ -3,11 +3,14 @@
 namespace App\Services;
 
 use App\Models\QcRequest;
+use App\Models\QcRequestResult;
 use App\Models\Batch;
 use App\Models\BatchStageExecution;
 use App\Models\BatchActivityExecution;
 use App\Models\BatchParameterReading;
 use App\Models\ReworkRecord;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -18,6 +21,122 @@ class QcService
     public function __construct(DocumentNumberService $docService)
     {
         $this->docService = $docService;
+    }
+
+    /**
+     * Idempotently create a QC Request for a stage execution submitted to QC.
+     */
+    public function createForStageExecution(BatchStageExecution $execution, ?int $submittedBy = null): QcRequest
+    {
+        return DB::transaction(function () use ($execution, $submittedBy) {
+            $existing = QcRequest::where('batch_stage_execution_id', $execution->id)
+                ->lockForUpdate()
+                ->first();
+
+            if ($existing) {
+                return $existing;
+            }
+
+            $execution->loadMissing([
+                'batch.product',
+                'batch.recipeVersion',
+                'recipeStage.stage',
+                'recipeStage.qcTests.qcTest',
+                'parameterReadings',
+                'activityExecutions',
+                'outputs.uom',
+            ]);
+
+            $readingsSnapshot = [
+                'parameters' => $execution->parameterReadings->map(fn ($r) => [
+                    'parameter_name'  => $r->parameter_name,
+                    'uom'             => $r->uom,
+                    'target_value'    => $r->target_value,
+                    'min_value'       => $r->min_value,
+                    'max_value'       => $r->max_value,
+                    'actual_value'    => $r->actual_value,
+                    'is_within_range' => (bool) $r->is_within_range,
+                ])->values()->all(),
+                'activities' => $execution->activityExecutions->map(fn ($a) => [
+                    'activity_name'           => $a->activity_name,
+                    'start_datetime'          => $a->start_datetime ? Carbon::parse($a->start_datetime)->toDateTimeString() : null,
+                    'end_datetime'            => $a->end_datetime ? Carbon::parse($a->end_datetime)->toDateTimeString() : null,
+                    'actual_duration_minutes' => $a->actual_duration_minutes,
+                    'status'                  => $a->status,
+                ])->values()->all(),
+            ];
+
+            $consumptions = $execution->batch
+                ? $execution->batch->consumptions()->with(['material', 'uom'])->where('recipe_stage_id', $execution->recipe_stage_id)->get()
+                : collect();
+
+            $outputsSnapshot = [
+                'outputs' => $execution->outputs->map(fn ($o) => [
+                    'output_type' => $o->output_type,
+                    'output_name' => $o->output_name,
+                    'actual_qty'  => (string) $o->actual_qty,
+                    'uom'         => $o->uom?->symbol ?? $o->uom?->uom_code ?? '',
+                ])->values()->all(),
+                'consumptions' => $consumptions->map(fn ($c) => [
+                    'material_name'       => $c->material?->name ?? '-',
+                    'allocated_qty'       => (string) $c->allocated_qty,
+                    'actual_consumed_qty' => (string) $c->actual_consumed_qty,
+                    'uom'                 => $c->uom?->symbol ?? $c->uom?->uom_code ?? '',
+                ])->values()->all(),
+            ];
+
+            $parentRework = ReworkRecord::where('rework_stage_execution_id', $execution->id)->first();
+            $parentQcRequestId = $parentRework?->qc_request_id;
+            $submitUserId = $submittedBy ?? Auth::id() ?? $execution->batch?->supervisor_id ?? 1;
+
+            $qcReq = QcRequest::create([
+                'qc_request_number'        => $this->docService->generate('QC Request Number'),
+                'batch_id'                 => $execution->batch_id,
+                'batch_stage_execution_id' => $execution->id,
+                'product_id'               => $execution->batch?->product_id,
+                'recipe_version_id'        => $execution->batch?->recipe_version_id,
+                'stage_id'                 => $execution->recipeStage?->stage_id,
+                'stage_name'               => $execution->stage_name,
+                'request_date'             => $execution->completed_at ?? now(),
+                'submitted_by'             => $submitUserId,
+                'status'                   => 'Pending',
+                'readings_snapshot'        => $readingsSnapshot,
+                'outputs_snapshot'         => $outputsSnapshot,
+                'parent_qc_request_id'     => $parentQcRequestId,
+            ]);
+
+            if ($parentQcRequestId) {
+                QcRequest::where('id', $parentQcRequestId)->update(['retest_qc_request_id' => $qcReq->id]);
+            }
+
+            if ($execution->recipeStage) {
+                foreach ($execution->recipeStage->qcTests as $qcTest) {
+                    if ($qcTest->qcTest) {
+                        QcRequestResult::create([
+                            'qc_request_id'  => $qcReq->id,
+                            'qc_test_id'     => $qcTest->qc_test_id,
+                            'test_name'      => $qcTest->qcTest->test_name ?? $qcTest->qcTest->name,
+                            'test_method'    => $qcTest->qcTest->test_method,
+                            'result_type'    => $qcTest->qcTest->result_type ?? 'Numeric',
+                            'uom'            => $qcTest->qcTest->uom,
+                            'expected_min'   => $qcTest->min_value,
+                            'expected_max'   => $qcTest->max_value,
+                            'expected_value' => $qcTest->target_value,
+                        ]);
+                    }
+                }
+            }
+
+            NotificationService::notifyRole(
+                'qc_manager',
+                'QC Pending',
+                "Batch {$execution->batch?->batch_number} - Stage {$execution->stage_name} submitted for QC review.",
+                route('qc.show', $qcReq->id),
+                'qc_pending'
+            );
+
+            return $qcReq;
+        });
     }
 
     /**
@@ -46,6 +165,14 @@ class QcService
                     }
                     $stageExec->save();
 
+                    // Mark linked rework record completed if this execution was a rework
+                    ReworkRecord::where('rework_stage_execution_id', $stageExec->id)
+                        ->where('status', '!=', 'Completed')
+                        ->update([
+                            'status'   => 'Completed',
+                            'end_date' => now(),
+                        ]);
+
                     // Unlock the next stage if all requirements are satisfied
                     $prodService->unlockNextStageIfEligible($stageExec);
                 } else {
@@ -56,7 +183,7 @@ class QcService
 
             $batch = $qcRequest->batch;
             // If all pending stages done or no active hold/reject, return to In Progress
-            if ($batch->status === 'QC Pending') {
+            if (in_array($batch->status, ['QC Pending', 'Rework Required'], true)) {
                 $batch->status = 'In Progress';
                 $batch->save();
             }

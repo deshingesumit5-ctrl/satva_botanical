@@ -50,4 +50,26 @@ class SalesInvoice extends Model
     {
         return $this->belongsTo(User::class, 'created_by');
     }
+
+    public function getStatusAttribute()
+    {
+        return $this->attributes['payment_status'] ?? 'Unpaid';
+    }
+
+    public function getSubtotalAttribute()
+    {
+        return $this->attributes['taxable_amount'] ?? 0;
+    }
+
+    public function getTaxAmountAttribute(): float
+    {
+        return (float) ($this->attributes['cgst_amount'] ?? 0)
+            + (float) ($this->attributes['sgst_amount'] ?? 0)
+            + (float) ($this->attributes['igst_amount'] ?? 0);
+    }
+
+    public function getGrandTotalAttribute()
+    {
+        return $this->attributes['total_amount'] ?? 0;
+    }
 }

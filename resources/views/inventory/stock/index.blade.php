@@ -61,10 +61,19 @@
                         </td>
                         <td>{{ $lot->warehouse->name ?? '-' }}</td>
                         <td>{{ $lot->storageLocation->name ?? '-' }}</td>
-                        <td class="fw-bold">{{ $lot->current_quantity }}</td>
+                        <td>{{ $lot->current_quantity }}</td>
                         <td>{{ $lot->uom->symbol ?? '' }}</td>
                         <td>{{ $lot->expiry_date ? \Carbon\Carbon::parse($lot->expiry_date)->format('d-m-Y') : '-' }}</td>
-                        <td><span class="badge-status badge-status-{{ strtolower($lot->status) }}">{{ $lot->status }}</span></td>
+                        <td>
+                            @php
+                                $qcClass = match($lot->qc_status) {
+                                    'QC Approved', 'Released' => 'active',
+                                    'QC Rejected' => 'inactive',
+                                    default => 'pending',
+                                };
+                            @endphp
+                            <span class="badge-status badge-status-{{ $qcClass }}">{{ $lot->qc_status ?? $lot->status }}</span>
+                        </td>
                     </tr>
                     @empty
                     <tr><td colspan="9" class="text-center py-4 text-muted">No stock lots found.</td></tr>

@@ -102,7 +102,7 @@
     </div>
 
     <div class="modal fade" id="addEquipmentModal" tabindex="-1">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-lg sattva-modal-lg">
             <form action="{{ route('masters.equipments.store') }}" method="POST" class="modal-content">
                 @csrf
                 <div class="modal-header">

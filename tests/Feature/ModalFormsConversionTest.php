@@ -22,7 +22,7 @@ class ModalFormsConversionTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->superAdmin = User::where('username', 'admin')->firstOrFail();
+        $this->superAdmin = User::where('email', 'admin@gmail.com')->firstOrFail();
     }
 
     public function test_reusable_form_modal_component_and_elevated_confirm_modal_are_present(): void

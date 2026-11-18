@@ -63,13 +63,8 @@
                             <tr>
                                 <td>{{ $users->firstItem() + $idx }}</td>
                                 <td class="fw-semibold text-dark">
-                                    <div class="d-flex align-items-center gap-2">
-                                        <span class="avatar-circle-sm">{{ strtoupper(substr($u->name, 0, 1)) }}</span>
-                                        <div>
-                                            <div>{{ $u->name }}</div>
-                                            <small class="text-muted">{{ $u->employee_code ?? '' }}</small>
-                                        </div>
-                                    </div>
+                                    <div>{{ $u->name }}</div>
+                                    <small class="text-muted">{{ $u->employee_code ?? '' }}</small>
                                 </td>
                                 <td><code>{{ $u->username }}</code></td>
                                 <td>{{ $u->email }}</td>

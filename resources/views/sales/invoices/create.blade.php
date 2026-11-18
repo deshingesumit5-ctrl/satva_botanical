@@ -14,10 +14,14 @@
         <div class="card-sattva-body p-4">
             <form action="{{ route('sales.invoices.store') }}" method="POST">
                 @csrf
+                @if($selectedDispatch && $selectedDispatch->sales_order_id)
+                    <input type="hidden" name="sales_order_id" value="{{ $selectedDispatch->sales_order_id }}">
+                @endif
+
                 <div class="row g-3 mb-3">
                     <div class="col-md-6">
                         <label class="form-label required">Delivery Dispatch Note</label>
-                        <select name="dispatch_id" class="form-select" onchange="window.location='{{ route('sales.invoices.create') }}?dispatch_id=' + this.value" required>
+                        <select name="dispatch_id" class="form-select" onchange="loadInvoiceDispatch(this)" required>
                             <option value="">Select Dispatch Challan</option>
                             @foreach($dispatches as $d)
                                 <option value="{{ $d->id }}" {{ $selectedDispatch && $selectedDispatch->id == $d->id ? 'selected' : '' }}>
@@ -29,6 +33,7 @@
                     <div class="col-md-6">
                         <label class="form-label required">Customer</label>
                         <select name="customer_id" class="form-select" required>
+                            <option value="">Select Customer</option>
                             @foreach($customers as $c)
                                 <option value="{{ $c->id }}" {{ $selectedDispatch && $selectedDispatch->customer_id == $c->id ? 'selected' : '' }}>{{ $c->name }}</option>
                             @endforeach
@@ -39,15 +44,15 @@
                 <div class="row g-3 mb-4">
                     <div class="col-md-4">
                         <label class="form-label required">Invoice Date</label>
-                        <input type="date" name="invoice_date" class="form-control" required value="{{ date('Y-m-d') }}">
+                        <input type="date" name="invoice_date" class="form-control" required value="{{ old('invoice_date', date('Y-m-d')) }}">
                     </div>
                     <div class="col-md-4">
                         <label class="form-label required">Due Date</label>
-                        <input type="date" name="due_date" class="form-control" required value="{{ date('Y-m-d', strtotime('+30 days')) }}">
+                        <input type="date" name="due_date" class="form-control" required value="{{ old('due_date', date('Y-m-d', strtotime('+30 days'))) }}">
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Payment Terms</label>
-                        <input type="text" name="payment_terms" class="form-control" value="Net 30 Days">
+                        <input type="text" name="payment_terms" class="form-control" value="{{ $selectedDispatch->salesOrder->payment_terms ?? 'Net 30 Days' }}" readonly>
                     </div>
                 </div>
 
@@ -65,6 +70,10 @@
                         </thead>
                         <tbody>
                             @foreach($selectedDispatch->items as $idx => $it)
+                            @php
+                                $defaultRate = $it->salesOrderItem->rate ?? 500.00;
+                                $defaultGst = $it->salesOrderItem->gst_rate ?? 18.00;
+                            @endphp
                             <tr>
                                 <td>
                                     <div class="fw-bold">{{ $it->product->name ?? '-' }}</div>
@@ -73,13 +82,17 @@
                                     <input type="hidden" name="items[{{ $idx }}][uom_id]" value="{{ $it->uom_id }}">
                                 </td>
                                 <td>{{ $it->quantity }} {{ $it->uom->symbol ?? '' }}</td>
-                                <td><input type="number" step="0.01" name="items[{{ $idx }}][unit_price]" class="form-control form-control-sm" value="500.00" required></td>
-                                <td><input type="number" step="0.01" name="items[{{ $idx }}][tax_percent]" class="form-control form-control-sm" value="18.00"></td>
+                                <td><input type="number" step="0.01" min="0" name="items[{{ $idx }}][unit_price]" class="form-control form-control-sm" value="{{ number_format((float)$defaultRate, 2, '.', '') }}" required></td>
+                                <td><input type="number" step="0.01" min="0" max="100" name="items[{{ $idx }}][tax_percent]" class="form-control form-control-sm" value="{{ number_format((float)$defaultGst, 2, '.', '') }}"></td>
                             </tr>
                             @endforeach
                         </tbody>
                     </table>
                 </div>
+                @else
+                    <div class="alert alert-light border small text-muted mb-4">
+                        <i class="bi bi-info-circle me-1"></i> Select a Delivery Dispatch Note above to load dispatched items for invoicing.
+                    </div>
                 @endif
 
                 <div class="d-flex justify-content-end gap-2">
@@ -90,4 +103,16 @@
         </div>
     </div>
 </div>
+
+<script>
+window.loadInvoiceDispatch = function (selectEl) {
+    const baseUrl = '{{ route('sales.invoices.create') }}';
+    const targetUrl = selectEl.value ? (baseUrl + '?dispatch_id=' + encodeURIComponent(selectEl.value)) : baseUrl;
+    if (selectEl.closest('#sattvaDynamicFormModal') && typeof window.openUrlInFormModal === 'function') {
+        window.openUrlInFormModal(targetUrl);
+    } else {
+        window.location.href = targetUrl;
+    }
+};
+</script>
 @endsection

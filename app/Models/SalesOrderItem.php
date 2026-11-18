@@ -48,4 +48,19 @@ class SalesOrderItem extends Model
     {
         return max(0, (float)$this->quantity - (float)$this->dispatched_qty);
     }
+
+    public function getUnitPriceAttribute()
+    {
+        return $this->attributes['rate'] ?? 0;
+    }
+
+    public function getTaxPercentAttribute()
+    {
+        return $this->attributes['gst_rate'] ?? 0;
+    }
+
+    public function getDispatchedQuantityAttribute()
+    {
+        return $this->attributes['dispatched_qty'] ?? 0;
+    }
 }

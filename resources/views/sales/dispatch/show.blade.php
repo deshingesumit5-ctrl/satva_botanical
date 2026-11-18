@@ -8,7 +8,13 @@
                 <h2 class="page-title mb-0">{{ $dispatch->dispatch_number }}</h2>
                 <span class="badge-status badge-status-{{ strtolower($dispatch->status) }}">{{ $dispatch->status }}</span>
             </div>
-            <p class="page-subtitle">Customer: <strong>{{ $dispatch->customer->name ?? '-' }}</strong> | Shipped At: {{ $dispatch->created_at->format('d-m-Y H:i') }}</p>
+            <p class="page-subtitle">
+                Customer: <strong>{{ $dispatch->customer->name ?? '-' }}</strong>
+                | Dispatch Date: {{ $dispatch->dispatch_date ? \Carbon\Carbon::parse($dispatch->dispatch_date)->format('d-m-Y') : $dispatch->created_at->format('d-m-Y') }}
+                @if($dispatch->transport_details || $dispatch->vehicle_number)
+                    | Transport: {{ $dispatch->transport_details ?? '-' }} ({{ $dispatch->vehicle_number ?? '-' }})
+                @endif
+            </p>
         </div>
         <div class="d-flex gap-2">
             @if(!$dispatch->salesInvoice)
@@ -43,6 +49,9 @@
                     </tbody>
                 </table>
             </div>
+            @if($dispatch->remarks)
+                <div class="mt-3 text-muted small"><strong>Remarks:</strong> {{ $dispatch->remarks }}</div>
+            @endif
         </div>
     </div>
 </div>

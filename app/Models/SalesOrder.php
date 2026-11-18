@@ -44,4 +44,21 @@ class SalesOrder extends Model
     {
         return $this->hasMany(SalesInvoice::class);
     }
+
+    public function getOrderNumberAttribute()
+    {
+        return $this->attributes['so_number'] ?? null;
+    }
+
+    public function getGrandTotalAttribute()
+    {
+        return $this->attributes['total_amount'] ?? 0;
+    }
+
+    public function getTaxAmountAttribute(): float
+    {
+        return (float) ($this->attributes['cgst_amount'] ?? 0)
+            + (float) ($this->attributes['sgst_amount'] ?? 0)
+            + (float) ($this->attributes['igst_amount'] ?? 0);
+    }
 }

@@ -27,7 +27,8 @@
                 <div class="row g-3 mb-3">
                     <div class="col-md-6">
                         <label class="form-label">PAN</label>
-                        <input type="text" name="pan" class="form-control" value="{{ old('pan', $company->pan ?? '') }}">
+                        <input type="text" name="pan" class="form-control @error('pan') is-invalid @enderror" value="{{ old('pan', $company->pan ?? '') }}" placeholder="ABCDE1234F" maxlength="10" minlength="10" pattern="[A-Za-z0-9]{10}" title="PAN must be exactly 10 alphanumeric characters">
+                        @error('pan')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Ayush / Drug License No</label>
@@ -42,7 +43,9 @@
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Phone / Mobile</label>
-                        <input type="text" name="phone" class="form-control" value="{{ old('phone', $company->phone ?? '') }}">
+                        <input type="text" name="phone" class="form-control @error('phone') is-invalid @enderror @error('contact_number') is-invalid @enderror" value="{{ old('phone', $company->phone ?? $company->contact_number ?? '') }}" placeholder="9876543210" maxlength="10" minlength="10" pattern="[0-9]{10}" inputmode="numeric" title="Mobile number must be exactly 10 digits">
+                        @error('phone')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        @error('contact_number')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                 </div>
 

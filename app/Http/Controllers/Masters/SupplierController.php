@@ -55,15 +55,19 @@ class SupplierController extends Controller
             'code' => 'required|string|max:30|unique:suppliers,code',
             'name' => 'required|string|max:150',
             'contact_person' => 'nullable|string|max:100',
-            'mobile' => 'nullable|string|max:20',
+            'mobile' => 'nullable|digits:10',
             'email' => 'nullable|email|max:100',
             'address' => 'nullable|string',
             'gstin' => 'nullable|string|max:15',
-            'pan' => 'nullable|string|max:10',
+            'pan' => ['nullable', 'string', 'size:10', 'regex:/^[A-Za-z0-9]{10}$/'],
             'payment_terms' => 'nullable|string|max:100',
             'bank_details' => 'nullable|string',
             'status' => 'required|in:Active,Inactive',
         ]);
+
+        if (!empty($validated['pan'])) {
+            $validated['pan'] = strtoupper($validated['pan']);
+        }
 
         $supplier = Supplier::create($validated);
         AuditService::log('masters', $supplier->code, 'create', null, $supplier->toArray(), 'Created supplier');
@@ -94,15 +98,19 @@ class SupplierController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:150',
             'contact_person' => 'nullable|string|max:100',
-            'mobile' => 'nullable|string|max:20',
+            'mobile' => 'nullable|digits:10',
             'email' => 'nullable|email|max:100',
             'address' => 'nullable|string',
             'gstin' => 'nullable|string|max:15',
-            'pan' => 'nullable|string|max:10',
+            'pan' => ['nullable', 'string', 'size:10', 'regex:/^[A-Za-z0-9]{10}$/'],
             'payment_terms' => 'nullable|string|max:100',
             'bank_details' => 'nullable|string',
             'status' => 'required|in:Active,Inactive',
         ]);
+
+        if (!empty($validated['pan'])) {
+            $validated['pan'] = strtoupper($validated['pan']);
+        }
 
         $old = $supplier->toArray();
         $supplier->update($validated);

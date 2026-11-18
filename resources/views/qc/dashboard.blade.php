@@ -52,10 +52,11 @@
                     <tr>
                         <th width="60">#</th>
                         <th>Request Number</th>
-                        <th>Type</th>
-                        <th>Item Tested</th>
-                        <th>Batch / Lot No</th>
-                        <th>Submitted At</th>
+                        <th>Stage</th>
+                        <th>Product</th>
+                        <th>Batch Number</th>
+                        <th>Submitted By</th>
+                        <th>Request Date</th>
                         <th>Status</th>
                         <th width="120" class="text-end">Actions</th>
                     </tr>
@@ -64,18 +65,21 @@
                     @forelse($recentRequests as $idx => $req)
                     <tr>
                         <td>{{ $idx + 1 }}</td>
-                        <td class="fw-bold font-monospace text-success">{{ $req->qc_request_number }}</td>
-                        <td><span class="badge bg-light text-dark border">{{ $req->sample_type }}</span></td>
-                        <td class="fw-semibold text-dark">{{ $req->material->name ?? $req->batch->product->name ?? '-' }}</td>
-                        <td>{{ $req->batch->batch_no ?? $req->stockLot->lot_number ?? '-' }}</td>
-                        <td>{{ $req->created_at->format('d-m-Y H:i') }}</td>
-                        <td><span class="badge-status badge-status-{{ strtolower($req->status) }}">{{ $req->status }}</span></td>
+                        <td class="fw-bold font-monospace text-success">
+                            <a href="{{ route('qc.show', $req) }}" class="text-decoration-none text-success">{{ $req->qc_request_number }}</a>
+                        </td>
+                        <td><span class="badge bg-light text-dark border">{{ $req->stage_name ?? $req->stageExecution?->stage_name ?? 'In-Process' }}</span></td>
+                        <td class="fw-semibold text-dark">{{ $req->product?->name ?? $req->batch?->product?->name ?? '-' }}</td>
+                        <td class="font-monospace">{{ $req->batch?->batch_number ?? '-' }}</td>
+                        <td>{{ $req->submittedByUser?->name ?? 'Plant' }}</td>
+                        <td>{{ $req->request_date ? $req->request_date->format('d-m-Y H:i') : ($req->created_at ? $req->created_at->format('d-m-Y H:i') : '-') }}</td>
+                        <td><x-status-badge :status="$req->status" /></td>
                         <td class="text-end">
                             <a href="{{ route('qc.show', $req) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil-square me-1"></i> Inspect</a>
                         </td>
                     </tr>
                     @empty
-                    <tr><td colspan="8" class="text-center py-4 text-muted">No recent QC requests found.</td></tr>
+                    <tr><td colspan="9" class="text-center py-4 text-muted">No recent QC requests found.</td></tr>
                     @endforelse
                 </tbody>
             </table>

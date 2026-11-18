@@ -62,11 +62,11 @@
                     @forelse($batches as $idx => $b)
                     <tr>
                         <td>{{ $batches->firstItem() + $idx }}</td>
-                        <td class="fw-bold font-monospace text-success">{{ $b->batch_no ?? $b->batch_number }}</td>
+                        <td class="fw-bold font-monospace text-success">{{ $b->batch_number ?? $b->batch_no }}</td>
                         <td class="fw-semibold text-dark">{{ $b->product->name ?? '-' }}</td>
-                        <td>{{ $b->planned_quantity ?? $b->batch_size }} {{ $b->uom->symbol ?? 'KG' }}</td>
+                        <td>{{ $b->planned_qty ?? $b->planned_quantity ?? $b->batch_size }} {{ $b->uom->symbol ?? 'KG' }}</td>
                         <td><span class="badge bg-light text-dark border">v{{ $b->recipeVersion->version_number ?? '1.0' }}</span></td>
-                        <td>{{ $b->start_date ? \Carbon\Carbon::parse($b->start_date)->format('d-m-Y') : '-' }}</td>
+                        <td>{{ ($b->planned_start_date ?? $b->start_date) ? \Carbon\Carbon::parse($b->planned_start_date ?? $b->start_date)->format('d-m-Y') : '-' }}</td>
                         <td><span class="badge-status badge-status-{{ strtolower(str_replace(' ', '-', $b->status)) }}">{{ $b->status }}</span></td>
                         <td class="text-end">
                             <a href="{{ route('production.execution.show', $b) }}" class="btn btn-sm btn-outline-primary me-1" title="Execute Flow"><i class="bi bi-play-circle me-1"></i> Run</a>

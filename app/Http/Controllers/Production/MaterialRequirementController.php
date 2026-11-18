@@ -10,6 +10,7 @@ use App\Models\BatchMaterialRequirement;
 use App\Models\ProductionPlan;
 use App\Models\StockLot;
 use App\Services\AuditService;
+use App\Services\ProductionService;
 use App\Services\StockService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -32,16 +33,22 @@ class MaterialRequirementController extends Controller
 
     public function allocate(Batch $batch)
     {
+        if ($batch->materialRequirements()->count() === 0 && $batch->recipeVersion) {
+            app(ProductionService::class)->generateMaterialRequirements($batch);
+        }
+
         $batch->load([
             'product',
+            'uom',
             'materialRequirements.material.baseUom',
+            'materialRequirements.uom',
             'materialRequirements.recipeStage.stage',
             'materialAllocations.stockLot.warehouse',
         ]);
 
-        // Get available active stock lots for required materials
+        // Get available active stock lots for required materials (FIFO)
         $requiredMaterialIds = $batch->materialRequirements->pluck('material_id')->unique();
-        $availableLots = StockLot::with(['warehouse', 'storageLocation'])
+        $availableLots = StockLot::with(['warehouse', 'storageLocation', 'material.baseUom'])
             ->whereIn('material_id', $requiredMaterialIds)
             ->where('status', 'Active')
             ->where('available_qty', '>', 0)
@@ -49,6 +56,9 @@ class MaterialRequirementController extends Controller
                 $q->whereNull('expiry_date')->orWhere('expiry_date', '>', now());
             })
             ->where('qc_status', '!=', 'QC Rejected')
+            ->where('qc_status', '!=', 'QC Hold')
+            ->orderByRaw('CASE WHEN expiry_date IS NULL THEN 1 ELSE 0 END, expiry_date ASC')
+            ->orderBy('id')
             ->get()
             ->groupBy('material_id');
 
@@ -58,46 +68,87 @@ class MaterialRequirementController extends Controller
     public function saveAllocation(Request $request, Batch $batch)
     {
         $allocations = $request->input('allocations', []);
+        $batchRef = $batch->batch_number ?? $batch->batch_no ?? ('BATCH-' . $batch->id);
 
-        DB::transaction(function () use ($batch, $allocations) {
-            foreach ($allocations as $reqId => $lotRows) {
-                $requirement = BatchMaterialRequirement::findOrFail($reqId);
+        try {
+            $allocatedCount = 0;
 
-                foreach ($lotRows as $row) {
-                    $lotId = $row['stock_lot_id'] ?? null;
-                    $qty = (float)($row['quantity'] ?? 0);
+            DB::transaction(function () use ($batch, $allocations, $batchRef, &$allocatedCount) {
+                foreach ($allocations as $key => $entry) {
+                    if (!is_array($entry)) {
+                        continue;
+                    }
 
-                    if ($lotId && $qty > 0) {
+                    // Support both flat row format (from allocate.blade.php) and nested multi-lot rows
+                    $isFlatRow = array_key_exists('stock_lot_id', $entry) || array_key_exists('allocated_qty', $entry) || array_key_exists('quantity', $entry);
+                    $rows = $isFlatRow ? [$entry] : $entry;
+                    $defaultReqId = $entry['requirement_id'] ?? $key;
+
+                    foreach ($rows as $row) {
+                        if (!is_array($row)) {
+                            continue;
+                        }
+
+                        $lotId = $row['stock_lot_id'] ?? null;
+                        $qty = (float) ($row['allocated_qty'] ?? $row['quantity'] ?? 0);
+
+                        if (empty($lotId) || $qty <= 0) {
+                            continue;
+                        }
+
+                        $reqId = $row['requirement_id'] ?? $defaultReqId;
+                        $requirement = BatchMaterialRequirement::where('batch_id', $batch->id)->find($reqId);
+
+                        if (!$requirement && !empty($row['material_id'])) {
+                            $requirement = BatchMaterialRequirement::where('batch_id', $batch->id)
+                                ->where('material_id', $row['material_id'])
+                                ->first();
+                        }
+
+                        if (!$requirement) {
+                            throw new \RuntimeException('Matching batch material requirement not found.');
+                        }
+
                         // StockService validates stock availability, qc status, expiry date
-                        $this->stockService->allocate($lotId, $qty, $batch->batch_no, $batch->id);
+                        $this->stockService->allocate((int) $lotId, $qty, $batchRef, $batch->id);
 
                         BatchMaterialAllocation::create([
-                            'batch_id' => $batch->id,
-                            'batch_material_requirement_id' => $requirement->id,
-                            'material_id' => $requirement->material_id,
-                            'stock_lot_id' => $lotId,
-                            'allocated_qty' => $qty,
-                            'status' => 'Allocated',
-                            'allocated_by' => Auth::id(),
+                            'batch_id'        => $batch->id,
+                            'recipe_stage_id' => $requirement->recipe_stage_id,
+                            'material_id'     => $requirement->material_id,
+                            'stock_lot_id'    => (int) $lotId,
+                            'uom_id'          => $requirement->uom_id,
+                            'allocated_qty'   => $qty,
+                            'allocated_at'    => now(),
+                            'allocated_by'    => Auth::id(),
                         ]);
 
-                        $requirement->allocated_qty += $qty;
+                        $requirement->allocated_qty = (float) $requirement->allocated_qty + $qty;
+                        if ($requirement->allocated_qty >= (float) $requirement->planned_qty) {
+                            $requirement->status = 'Fully Allocated';
+                        } elseif ($requirement->allocated_qty > 0) {
+                            $requirement->status = 'Partially Allocated';
+                        }
+                        $requirement->save();
+
+                        $allocatedCount++;
                     }
                 }
 
-                if ($requirement->allocated_qty >= $requirement->planned_qty) {
-                    $requirement->status = 'Fully Allocated';
-                } elseif ($requirement->allocated_qty > 0) {
-                    $requirement->status = 'Partially Allocated';
+                if ($allocatedCount > 0) {
+                    AuditService::log('production', 'material_allocation', $batchRef, null, null, 'Allocated material lots for batch');
                 }
-                $requirement->save();
+            });
+
+            if ($allocatedCount === 0) {
+                return back()->withInput()->with('error', 'Please select a stock lot and enter an allocation quantity greater than 0.');
             }
 
-            AuditService::log('production', $batch->batch_no, 'material_allocation', null, null, 'Allocated material lots for batch');
-        });
-
-        return redirect()->route('production.batches.show', $batch->id)
-            ->with('success', 'Material lots allocated successfully.');
+            return redirect()->route('production.batches.show', $batch->id)
+                ->with('success', 'Material lots allocated successfully.');
+        } catch (\Throwable $e) {
+            return back()->withInput()->with('error', 'Allocation failed: ' . $e->getMessage());
+        }
     }
 
     public function consume(Request $request, Batch $batch)

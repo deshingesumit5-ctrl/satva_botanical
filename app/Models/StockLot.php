@@ -53,4 +53,28 @@ class StockLot extends Model
     {
         return $this->hasMany(StockLedger::class);
     }
+
+    /**
+     * Compatibility accessor for views/services expecting `current_quantity`.
+     */
+    public function getCurrentQuantityAttribute(): float
+    {
+        return (float) ($this->attributes['available_qty'] ?? 0);
+    }
+
+    /**
+     * Compatibility accessor for views/services expecting `initial_quantity`.
+     */
+    public function getInitialQuantityAttribute(): float
+    {
+        return (float) ($this->attributes['received_qty'] ?? 0);
+    }
+
+    /**
+     * Resolve UOM from the associated material or product base UOM.
+     */
+    public function getUomAttribute(): ?Uom
+    {
+        return $this->material?->baseUom ?? $this->product?->baseUom;
+    }
 }

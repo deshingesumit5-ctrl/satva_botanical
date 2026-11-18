@@ -17,7 +17,7 @@ class RoleModuleAccessTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->superAdmin = User::where('username', 'admin')->firstOrFail();
+        $this->superAdmin = User::where('email', 'admin@gmail.com')->firstOrFail();
     }
 
     public function test_role_create_and_edit_are_full_pages_with_module_permissions_and_persistence(): void

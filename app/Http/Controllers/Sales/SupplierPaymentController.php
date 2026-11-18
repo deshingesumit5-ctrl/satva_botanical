@@ -28,7 +28,7 @@ class SupplierPaymentController extends Controller
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('payment_number', 'like', "%{$search}%")
-                  ->orWhere('payment_reference', 'like', "%{$search}%")
+                  ->orWhere('reference_number', 'like', "%{$search}%")
                   ->orWhereHas('supplier', function ($sq) use ($search) {
                       $sq->where('name', 'like', "%{$search}%");
                   });
@@ -40,59 +40,69 @@ class SupplierPaymentController extends Controller
         return view('sales.payments.index', compact('payments'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $suppliers = Supplier::where('status', 'Active')->orderBy('name')->get();
-        $invoices = PurchaseInvoice::whereIn('payment_status', ['Unpaid', 'Partially Paid'])->with('supplier')->get();
+        $invoices = PurchaseInvoice::whereIn('payment_status', ['Unpaid', 'Partially Paid'])
+            ->with('supplier')
+            ->latest()
+            ->get();
+        $selectedInvoiceId = $request->input('invoice_id');
 
-        return view('sales.payments.create', compact('suppliers', 'invoices'));
+        return view('sales.payments.create', compact('suppliers', 'invoices', 'selectedInvoiceId'));
     }
 
     public function store(Request $request)
     {
+        if (!$request->filled('reference_number') && $request->filled('payment_reference')) {
+            $request->merge(['reference_number' => $request->input('payment_reference')]);
+        }
+        if ($request->input('payment_mode') === 'NEFT/RTGS') {
+            $request->merge(['payment_mode' => 'Bank Transfer']);
+        }
+
         $validated = $request->validate([
             'supplier_id' => 'required|exists:suppliers,id',
-            'purchase_invoice_id' => 'nullable|exists:purchase_invoices,id',
+            'purchase_invoice_id' => 'required|exists:purchase_invoices,id',
             'payment_date' => 'required|date',
             'amount' => 'required|numeric|min:0.01',
-            'payment_mode' => 'required|in:Bank Transfer,Cheque,NEFT/RTGS,UPI,Cash',
-            'payment_reference' => 'nullable|string|max:100',
+            'payment_mode' => 'required|in:Bank Transfer,Cheque,Cash,UPI',
+            'reference_number' => 'nullable|string|max:50',
             'remarks' => 'nullable|string',
         ]);
 
         $paymentNumber = $this->docService->generate('PAYMENT');
 
         $payment = DB::transaction(function () use ($validated, $paymentNumber) {
+            $inv = PurchaseInvoice::lockForUpdate()->findOrFail($validated['purchase_invoice_id']);
+
             $paymentRecord = SupplierPayment::create([
                 'payment_number' => $paymentNumber,
                 'supplier_id' => $validated['supplier_id'],
-                'purchase_invoice_id' => $validated['purchase_invoice_id'] ?? null,
+                'purchase_invoice_id' => $inv->id,
                 'payment_date' => $validated['payment_date'],
                 'amount' => $validated['amount'],
                 'payment_mode' => $validated['payment_mode'],
-                'reference_number' => $validated['payment_reference'] ?? null,
+                'reference_number' => $validated['reference_number'] ?? null,
                 'remarks' => $validated['remarks'] ?? null,
                 'created_by' => Auth::id(),
             ]);
 
-            // Update purchase invoice paid amount
-            if (!empty($validated['purchase_invoice_id'])) {
-                $inv = PurchaseInvoice::find($validated['purchase_invoice_id']);
-                if ($inv) {
-                    $inv->paid_amount += $validated['amount'];
-                    $inv->balance_amount = max(0, (float)$inv->total_amount - (float)$inv->paid_amount);
-                    if ($inv->paid_amount >= $inv->total_amount) {
-                        $inv->payment_status = 'Paid';
-                    } else {
-                        $inv->payment_status = 'Partially Paid';
-                    }
-                    $inv->save();
-                }
-            }
+            $inv->paid_amount = (float) $inv->paid_amount + (float) $validated['amount'];
+            $inv->balance_amount = max(0, (float) $inv->total_amount - (float) $inv->paid_amount);
+            $inv->payment_status = ($inv->paid_amount >= (float) $inv->total_amount) ? 'Paid' : 'Partially Paid';
+            $inv->save();
 
             AuditService::log('accounts', $paymentRecord->payment_number, 'supplier_payment', null, $paymentRecord->toArray(), 'Recorded vendor payment');
             return $paymentRecord;
         });
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => "Payment {$payment->payment_number} recorded.",
+                'redirect' => route('sales.payments.index'),
+            ]);
+        }
 
         return redirect()->route('sales.payments.index')
             ->with('success', "Payment {$payment->payment_number} recorded.");

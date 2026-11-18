@@ -15,7 +15,7 @@ class InventoryStockTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->admin = User::where('username', 'admin')->first();
+        $this->admin = User::where('email', 'admin@gmail.com')->first();
     }
 
     public function test_can_view_inventory_dashboard_and_stock_pages(): void
@@ -26,8 +26,29 @@ class InventoryStockTest extends TestCase
         $stockResponse = $this->actingAs($this->admin)->get(route('inventory.stock.index'));
         $stockResponse->assertStatus(200);
 
+        $activeLot = StockLot::with(['material.baseUom', 'product.baseUom'])
+            ->where('status', 'Active')
+            ->where('available_qty', '>', 0)
+            ->latest()
+            ->first();
+        if ($activeLot) {
+            $stockResponse->assertSee((string) $activeLot->current_quantity, false);
+            if ($activeLot->uom) {
+                $stockResponse->assertSee($activeLot->uom->symbol, false);
+            }
+        }
+
         $lotsResponse = $this->actingAs($this->admin)->get(route('inventory.stock.lots'));
         $lotsResponse->assertStatus(200);
+
+        $latestLot = StockLot::with(['material.baseUom', 'product.baseUom'])->latest()->first();
+        if ($latestLot) {
+            $lotsResponse->assertSee((string) $latestLot->initial_quantity, false);
+            $lotsResponse->assertSee((string) $latestLot->current_quantity, false);
+            if ($latestLot->uom) {
+                $lotsResponse->assertSee($latestLot->uom->symbol, false);
+            }
+        }
 
         $ledgerResponse = $this->actingAs($this->admin)->get(route('inventory.stock.ledger'));
         $ledgerResponse->assertStatus(200);

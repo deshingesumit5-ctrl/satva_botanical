@@ -118,4 +118,9 @@ class Batch extends Model
     {
         return $this->hasOne(BatchCost::class);
     }
+
+    public function getBatchNoAttribute()
+    {
+        return $this->attributes['batch_number'] ?? $this->attributes['batch_no'] ?? null;
+    }
 }

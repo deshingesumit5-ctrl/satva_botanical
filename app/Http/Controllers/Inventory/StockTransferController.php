@@ -44,7 +44,7 @@ class StockTransferController extends Controller
     {
         $warehouses = Warehouse::where('status', 'Active')->get();
         $locations = StorageLocation::where('status', 'Active')->get();
-        $lots = StockLot::with(['material', 'product', 'warehouse'])
+        $lots = StockLot::with(['material.baseUom', 'product.baseUom', 'warehouse'])
             ->where('status', 'Active')
             ->where('available_qty', '>', 0)
             ->get();

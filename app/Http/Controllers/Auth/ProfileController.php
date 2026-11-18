@@ -28,7 +28,7 @@ class ProfileController extends Controller
         $request->validate([
             'name' => 'required|string|max:100',
             'email' => ['required', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
-            'mobile' => 'nullable|string|max:20',
+            'mobile' => 'nullable|digits:10',
             'profile_image' => 'nullable|image|max:2048',
         ]);
 
@@ -68,7 +68,7 @@ class ProfileController extends Controller
             return back()->withErrors(['current_password' => 'The provided current password does not match our records.']);
         }
 
-        $user->password = Hash::make($request->password);
+        $user->password = $request->password;
         $user->save();
 
         AuditService::log('auth', $user->user_id, 'password_change', null, null, 'User changed password');

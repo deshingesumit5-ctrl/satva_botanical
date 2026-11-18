@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Qc;
 
 use App\Http\Controllers\Controller;
+use App\Models\Product;
 use App\Models\QcRequest;
 use App\Models\QcRequestResult;
 use App\Services\QcService;
@@ -25,45 +26,96 @@ class QcController extends Controller
         $rejectedCount = QcRequest::where('status', 'Rejected')->count();
         $reworkCount = QcRequest::where('status', 'Rework Required')->count();
 
-        $recentRequests = QcRequest::with(['batch.product', 'submittedByUser'])
-            ->latest()
+        $recentRequests = QcRequest::with([
+            'batch.product',
+            'product',
+            'stageExecution.stage',
+            'submittedByUser',
+            'decisionByUser',
+        ])
+            ->latest('request_date')
+            ->latest('id')
             ->take(10)
             ->get();
 
-        return view('qc.dashboard', compact('pendingCount', 'approvedCount', 'rejectedCount', 'reworkCount', 'recentRequests'));
+        return response()
+            ->view('qc.dashboard', compact('pendingCount', 'approvedCount', 'rejectedCount', 'reworkCount', 'recentRequests'))
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+            ->header('Pragma', 'no-cache');
     }
 
     public function pending(Request $request)
     {
-        $query = QcRequest::with(['batch.product', 'stageExecution', 'submittedByUser'])
-            ->where('status', 'Pending');
+        $query = QcRequest::with([
+            'batch.product',
+            'product',
+            'stageExecution.stage',
+            'submittedByUser',
+        ])->where('status', 'Pending');
 
-        if ($search = $request->input('search')) {
+        if ($search = trim((string) $request->input('search'))) {
             $query->where(function ($q) use ($search) {
                 $q->where('qc_request_number', 'like', "%{$search}%")
-                  ->orWhere('stage_name', 'like', "%{$search}%")
-                  ->orWhereHas('batch', function ($bq) use ($search) {
-                      $bq->where('batch_no', 'like', "%{$search}%");
-                  });
+                    ->orWhere('stage_name', 'like', "%{$search}%")
+                    ->orWhereHas('batch', function ($bq) use ($search) {
+                        $bq->where('batch_number', 'like', "%{$search}%")
+                            ->orWhereHas('product', function ($pq) use ($search) {
+                                $pq->where('name', 'like', "%{$search}%");
+                            });
+                    })
+                    ->orWhereHas('product', function ($pq) use ($search) {
+                        $pq->where('name', 'like', "%{$search}%");
+                    });
             });
         }
 
-        $requests = $query->latest()->paginate(10)->withQueryString();
+        if ($productId = $request->input('product_id')) {
+            $query->where(function ($q) use ($productId) {
+                $q->where('product_id', $productId)
+                    ->orWhereHas('batch', fn ($bq) => $bq->where('product_id', $productId));
+            });
+        }
 
-        return view('qc.pending', compact('requests'));
+        if ($fromDate = $request->input('from_date')) {
+            $query->whereDate('request_date', '>=', $fromDate);
+        }
+
+        if ($toDate = $request->input('to_date')) {
+            $query->whereDate('request_date', '<=', $toDate);
+        }
+
+        $requests = $query->latest('request_date')->latest('id')->paginate(10)->withQueryString();
+        $products = Product::where('status', 'Active')->orderBy('name')->get();
+
+        return response()
+            ->view('qc.pending', compact('requests', 'products'))
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+            ->header('Pragma', 'no-cache');
     }
 
     public function show(QcRequest $qcRequest)
     {
         $qcRequest->load([
             'batch.product',
-            'stageExecution',
+            'batch.recipeVersion',
+            'product',
+            'recipeVersion',
+            'stage',
+            'stageExecution.stage',
+            'stageExecution.parameterReadings',
+            'stageExecution.outputs.uom',
             'results.qcTest',
             'submittedByUser',
             'decisionByUser',
+            'parentRequest',
+            'retestRequest.decisionByUser',
+            'reworkRecords',
         ]);
 
-        return view('qc.show', compact('qcRequest'));
+        return response()
+            ->view('qc.show', compact('qcRequest'))
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+            ->header('Pragma', 'no-cache');
     }
 
     public function saveResults(Request $request, QcRequest $qcRequest)
@@ -76,10 +128,10 @@ class QcController extends Controller
                 $r->actual_value = $data['actual_value'] ?? null;
                 $r->remarks = $data['remarks'] ?? $r->remarks;
 
-                if ($r->actual_value !== null && is_numeric($r->actual_value)) {
+                if ($r->actual_value !== null && $r->actual_value !== '' && is_numeric($r->actual_value)) {
                     $val = (float) $r->actual_value;
-                    $min = ($r->expected_min !== null && is_numeric($r->expected_min)) ? (float) $r->expected_min : null;
-                    $max = ($r->expected_max !== null && is_numeric($r->expected_max)) ? (float) $r->expected_max : null;
+                    $min = ($r->expected_min !== null && $r->expected_min !== '' && is_numeric($r->expected_min)) ? (float) $r->expected_min : null;
+                    $max = ($r->expected_max !== null && $r->expected_max !== '' && is_numeric($r->expected_max)) ? (float) $r->expected_max : null;
                     $pass = true;
                     if ($min !== null && $val < $min) {
                         $pass = false;
@@ -128,7 +180,7 @@ class QcController extends Controller
     {
         $request->validate([
             'instructions' => 'required|string|max:1000',
-            'reason' => 'required|string|max:500',
+            'reason'       => 'required|string|max:500',
         ]);
 
         try {
@@ -148,13 +200,30 @@ class QcController extends Controller
 
     public function history(Request $request)
     {
-        $query = QcRequest::with(['batch.product', 'decisionByUser'])
-            ->whereIn('status', ['Approved', 'Rejected', 'Rework Required']);
+        $query = QcRequest::with([
+            'batch.product',
+            'product',
+            'stageExecution.parameterReadings',
+            'submittedByUser',
+            'decisionByUser',
+            'results',
+            'parentRequest',
+            'retestRequest.decisionByUser',
+            'retestRequest.results',
+            'reworkRecords',
+        ]);
 
-        if ($search = $request->input('search')) {
+        if ($search = trim((string) $request->input('search'))) {
             $query->where(function ($q) use ($search) {
                 $q->where('qc_request_number', 'like', "%{$search}%")
-                  ->orWhere('decision_remarks', 'like', "%{$search}%");
+                    ->orWhere('stage_name', 'like', "%{$search}%")
+                    ->orWhere('decision_remarks', 'like', "%{$search}%")
+                    ->orWhere('rework_instructions', 'like', "%{$search}%")
+                    ->orWhereHas('batch', function ($bq) use ($search) {
+                        $bq->where('batch_number', 'like', "%{$search}%")
+                            ->orWhereHas('product', fn ($pq) => $pq->where('name', 'like', "%{$search}%"));
+                    })
+                    ->orWhereHas('product', fn ($pq) => $pq->where('name', 'like', "%{$search}%"));
             });
         }
 
@@ -162,8 +231,28 @@ class QcController extends Controller
             $query->where('status', $status);
         }
 
-        $requests = $query->latest()->paginate(15)->withQueryString();
+        if ($productId = $request->input('product_id')) {
+            $query->where(function ($q) use ($productId) {
+                $q->where('product_id', $productId)
+                    ->orWhereHas('batch', fn ($bq) => $bq->where('product_id', $productId));
+            });
+        }
 
-        return view('qc.history', compact('requests'));
+        if ($fromDate = $request->input('from_date')) {
+            $query->whereDate('request_date', '>=', $fromDate);
+        }
+
+        if ($toDate = $request->input('to_date')) {
+            $query->whereDate('request_date', '<=', $toDate);
+        }
+
+        $requests = $query->latest('request_date')->latest('id')->paginate(15)->withQueryString();
+        $products = Product::where('status', 'Active')->orderBy('name')->get();
+        $lastUpdated = now()->format('d-m-Y H:i:s');
+
+        return response()
+            ->view('qc.history', compact('requests', 'products', 'lastUpdated'))
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+            ->header('Pragma', 'no-cache');
     }
 }

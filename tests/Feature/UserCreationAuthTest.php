@@ -18,7 +18,7 @@ class UserCreationAuthTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->superAdmin = User::where('username', 'admin')->firstOrFail();
+        $this->superAdmin = User::where('email', 'admin@gmail.com')->firstOrFail();
         RateLimiter::clear('login:127.0.0.1');
     }
 

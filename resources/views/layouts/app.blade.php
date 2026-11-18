@@ -22,9 +22,9 @@
     <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <!-- Custom Theme CSS -->
-    <link href="{{ asset('css/app.css') }}" rel="stylesheet">
+    <link href="{{ asset('css/app.css') }}?v={{ filemtime(public_path('css/app.css')) }}" rel="stylesheet">
     <!-- Forms & List Design System (Loaded Last) -->
-    <link href="{{ asset('css/forms.css') }}" rel="stylesheet">
+    <link href="{{ asset('css/forms.css') }}?v={{ filemtime(public_path('css/forms.css')) }}" rel="stylesheet">
 
     @php
         $authUser = auth()->user();
@@ -253,9 +253,6 @@
                                     <li><a class="dropdown-item" href="{{ route('inventory.stock.lots') }}"><i class="bi bi-upc-scan me-2"></i>Lot-wise Stock</a></li>
                                     <li><a class="dropdown-item" href="{{ route('inventory.stock.ledger') }}"><i class="bi bi-journal-bookmark me-2"></i>Stock Ledger (Append-Only)</a></li>
                                 @endif
-                                @if($authUser->hasPermission('inventory.stock.add'))
-                                    <li><a class="dropdown-item" href="{{ route('inventory.stock.opening-entry-form') }}"><i class="bi bi-plus-square-dotted me-2"></i>Opening Stock Entry</a></li>
-                                @endif
                                 @if($authUser->hasAnyPermission(['inventory.transfers.view', 'inventory.adjustments.view', 'inventory.wip.view', 'inventory.recovery.view', 'inventory.waste.view']))
                                     <li><hr class="dropdown-divider"></li>
                                 @endif
@@ -293,6 +290,7 @@
                                 @endif
                                 @if($authUser->hasPermission('production.batches.view'))
                                     <li><a class="dropdown-item" href="{{ route('production.batches.index') }}"><i class="bi bi-collection-fill me-2"></i>Batch Management</a></li>
+                                    <li><a class="dropdown-item" href="{{ route('production.batches.index', ['status' => 'QC Pending']) }}"><i class="bi bi-hourglass-split me-2"></i>QC Pending Batches</a></li>
                                 @endif
                                 @if($authUser->hasPermission('production.rework.view'))
                                     <li><a class="dropdown-item" href="{{ route('production.rework.index') }}"><i class="bi bi-arrow-repeat me-2"></i>Rework Batches</a></li>
@@ -710,9 +708,6 @@
                                     <a class="sidebar-sublink" href="{{ route('inventory.stock.lots') }}">Lot-wise Stock</a>
                                     <a class="sidebar-sublink" href="{{ route('inventory.stock.ledger') }}">Stock Ledger</a>
                                 @endif
-                                @if($authUser->hasPermission('inventory.stock.add'))
-                                    <a class="sidebar-sublink" href="{{ route('inventory.stock.opening-entry-form') }}">Opening Entry</a>
-                                @endif
                                 @if($authUser->hasPermission('inventory.transfers.view'))
                                     <a class="sidebar-sublink" href="{{ route('inventory.transfers.index') }}">Stock Transfers</a>
                                 @endif
@@ -752,6 +747,7 @@
                                 @endif
                                 @if($authUser->hasPermission('production.batches.view'))
                                     <a class="sidebar-sublink" href="{{ route('production.batches.index') }}">Batch Management</a>
+                                    <a class="sidebar-sublink" href="{{ route('production.batches.index', ['status' => 'QC Pending']) }}">QC Pending Batches</a>
                                 @endif
                                 @if($authUser->hasPermission('production.rework.view'))
                                     <a class="sidebar-sublink" href="{{ route('production.rework.index') }}">Rework Batches</a>
@@ -903,7 +899,7 @@
                                     <a class="sidebar-sublink" href="{{ route('admin.roles.index') }}">Role Master</a>
                                 @endif
                                 @if($authUser->hasPermission('admin.permissions.view'))
-                                    <a class="sidebar-sublink" href="{{ route('admin.permissions.index') }}">Permission Matrix</a>
+                                    <a class="sidebar-sublink" href="{{ route('admin.permissions.index') }}">Permission Matrix</a> 
                                 @endif
                                 @if($authUser->hasPermission('admin.audit.view'))
                                     <a class="sidebar-sublink" href="{{ route('admin.audit-trail.index') }}">Audit Trail</a>
@@ -1022,7 +1018,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
-    <script src="{{ asset('js/app.js') }}"></script>
+    <script src="{{ asset('js/app.js') }}?v={{ filemtime(public_path('js/app.js')) }}"></script>
 
     <script>
         // =========================================================================

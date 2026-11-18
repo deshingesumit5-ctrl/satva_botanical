@@ -11,7 +11,8 @@ body {
 }
 
 /* --- Page Header --- */
-.page-title, h2.page-title {
+.page-title,
+h2.page-title {
     font-size: 32px !important;
     font-weight: 700 !important;
     color: #0f172a !important;
@@ -20,7 +21,8 @@ body {
     margin-bottom: 4px !important;
 }
 
-.page-subtitle, p.page-subtitle {
+.page-subtitle,
+p.page-subtitle {
     color: #64748b !important;
     font-size: 14px !important;
     font-weight: 400 !important;
@@ -46,7 +48,8 @@ body {
     transition: all 0.2s ease-in-out !important;
 }
 
-.btn-primary-sattva:hover, .btn-primary-sattva:focus {
+.btn-primary-sattva:hover,
+.btn-primary-sattva:focus {
     background-color: #047857 !important;
     border-color: #047857 !important;
     color: #ffffff !important;
@@ -101,7 +104,8 @@ input[name="search"]::placeholder,
     transition: all 0.2s ease-in-out !important;
 }
 
-.btn-dark-filter:hover, .btn-dark-filter:focus {
+.btn-dark-filter:hover,
+.btn-dark-filter:focus {
     background-color: #1e293b !important;
     border-color: #1e293b !important;
     color: #ffffff !important;
@@ -168,6 +172,27 @@ label .text-danger {
     font-size: 14px !important;
     font-family: inherit !important;
     transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out !important;
+}
+
+.form-select {
+    padding: 0 36px 0 14px !important;
+    background-position: right 12px center !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    cursor: pointer !important;
+}
+
+.form-control.form-control-sm,
+.form-select.form-select-sm {
+    height: 36px !important;
+    border-radius: 10px !important;
+    font-size: 13px !important;
+}
+
+.form-select.form-select-sm {
+    padding: 0 32px 0 10px !important;
+    background-position: right 10px center !important;
 }
 
 textarea.form-control {
@@ -492,19 +517,22 @@ button.btn-outline-danger:hover {
 
 /* --- Mobile Responsiveness (Under 768px) --- */
 @media (max-width: 768px) {
-    .page-title, h2.page-title {
+
+    .page-title,
+    h2.page-title {
         font-size: 24px !important;
     }
 
-    body, html {
+    body,
+    html {
         overflow-x: hidden !important;
     }
 
     /* Forms 1 column on mobile */
-    .row.g-2 > [class*="col-"],
-    .row.g-3 > [class*="col-"],
-    .row > [class*="col-md-"],
-    .row > [class*="col-sm-"] {
+    .row.g-2>[class*="col-"],
+    .row.g-3>[class*="col-"],
+    .row>[class*="col-md-"],
+    .row>[class*="col-sm-"] {
         width: 100% !important;
     }
 
@@ -552,7 +580,7 @@ button.btn-outline-danger:hover {
         max-width: calc(100% - 32px) !important;
     }
 
-    .modal .row > [class*="col-"] {
+    .modal .row>[class*="col-"] {
         width: 100% !important;
         flex: 0 0 100% !important;
         max-width: 100% !important;
@@ -561,11 +589,11 @@ button.btn-outline-danger:hover {
 
 /* --- Reference Add Warehouse Modal Sizes & Scrollable Layout --- */
 .sattva-modal-standard {
-    max-width: 500px !important;
+    max-width: 650px !important;
 }
 
 .sattva-modal-lg {
-    max-width: 800px !important;
+    max-width: 860px !important;
 }
 
 .sattva-modal-xl {
@@ -608,4 +636,70 @@ button.btn-outline-danger:hover {
 
 .modal-backdrop.confirm-backdrop-top {
     z-index: 1080 !important;
+}
+
+/* --- Custom Contained Select Dropdown (Stays Strictly Below Square Box & Inside Modal) --- */
+.form-select.sattva-select-open {
+    border-color: #059669 !important;
+    box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15) !important;
+    background-color: #ffffff !important;
+}
+
+.sattva-custom-select-menu {
+    position: fixed;
+    z-index: 100060;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.16), 0 4px 10px -2px rgba(15, 23, 42, 0.08);
+    padding: 4px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    box-sizing: border-box;
+}
+
+.sattva-custom-select-menu::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sattva-custom-select-menu::-webkit-scrollbar-track {
+    background: #f8fafc;
+    border-radius: 6px;
+}
+
+.sattva-custom-select-menu::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 6px;
+}
+
+.sattva-custom-select-option {
+    padding: 8px 12px;
+    font-size: 13.5px;
+    line-height: 1.35;
+    color: #0f172a;
+    border-radius: 6px;
+    cursor: pointer;
+    white-space: normal;
+    word-wrap: break-word;
+    overflow-wrap: anywhere;
+    user-select: none;
+    transition: background-color 0.1s ease, color 0.1s ease;
+}
+
+.sattva-custom-select-option:hover,
+.sattva-custom-select-option.is-highlighted {
+    background-color: #ecfdf5;
+    color: #059669;
+}
+
+.sattva-custom-select-option.is-selected {
+    background-color: #059669;
+    color: #ffffff;
+    font-weight: 600;
+}
+
+.sattva-custom-select-option.is-disabled {
+    color: #94a3b8;
+    cursor: not-allowed;
+    opacity: 0.6;
 }

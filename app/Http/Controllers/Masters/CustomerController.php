@@ -49,16 +49,20 @@ class CustomerController extends Controller
             'code' => 'required|string|max:30|unique:customers,code',
             'name' => 'required|string|max:150',
             'contact_person' => 'nullable|string|max:100',
-            'mobile' => 'nullable|string|max:20',
+            'mobile' => 'nullable|digits:10',
             'email' => 'nullable|email|max:100',
             'billing_address' => 'nullable|string',
             'shipping_address' => 'nullable|string',
             'gstin' => 'nullable|string|max:15',
-            'pan' => 'nullable|string|max:10',
+            'pan' => ['nullable', 'string', 'size:10', 'regex:/^[A-Za-z0-9]{10}$/'],
             'payment_terms' => 'nullable|string|max:100',
             'credit_limit' => 'nullable|numeric|min:0',
             'status' => 'required|in:Active,Inactive',
         ]);
+
+        if (!empty($validated['pan'])) {
+            $validated['pan'] = strtoupper($validated['pan']);
+        }
 
         $customer = Customer::create($validated);
         AuditService::log('masters', $customer->code, 'create', null, $customer->toArray(), 'Created customer');
@@ -82,16 +86,20 @@ class CustomerController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:150',
             'contact_person' => 'nullable|string|max:100',
-            'mobile' => 'nullable|string|max:20',
+            'mobile' => 'nullable|digits:10',
             'email' => 'nullable|email|max:100',
             'billing_address' => 'nullable|string',
             'shipping_address' => 'nullable|string',
             'gstin' => 'nullable|string|max:15',
-            'pan' => 'nullable|string|max:10',
+            'pan' => ['nullable', 'string', 'size:10', 'regex:/^[A-Za-z0-9]{10}$/'],
             'payment_terms' => 'nullable|string|max:100',
             'credit_limit' => 'nullable|numeric|min:0',
             'status' => 'required|in:Active,Inactive',
         ]);
+
+        if (!empty($validated['pan'])) {
+            $validated['pan'] = strtoupper($validated['pan']);
+        }
 
         $old = $customer->toArray();
         $customer->update($validated);

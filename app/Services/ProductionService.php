@@ -7,6 +7,7 @@ use App\Models\BatchActivityExecution;
 use App\Models\BatchHold;
 use App\Models\BatchMaterialAllocation;
 use App\Models\BatchMaterialConsumption;
+use App\Models\BatchMaterialRequirement;
 use App\Models\BatchParameterReading;
 use App\Models\BatchReconciliation;
 use App\Models\BatchStageExecution;
@@ -39,7 +40,11 @@ class ProductionService
      */
     public function generateMaterialRequirements(Batch $batch): void
     {
+        $batch->loadMissing('recipeVersion.stages.inputMaterials');
         $version = $batch->recipeVersion;
+        if (!$version) {
+            return;
+        }
         $refBatchSize = (float) ($version->reference_batch_size ?: $batch->planned_qty);
         $ratio = ($refBatchSize > 0) ? ((float) $batch->planned_qty / $refBatchSize) : 1.0;
 
@@ -53,18 +58,38 @@ class ProductionService
                     $qty = (float) $material->standard_qty * $ratio;
                 }
 
-                BatchMaterialRequirement::updateOrCreate(
+                $plannedQty = round($qty, 4);
+                $existingAllocated = (float) BatchMaterialAllocation::where('batch_id', $batch->id)
+                    ->where('recipe_stage_id', $stage->id)
+                    ->where('material_id', $material->material_id)
+                    ->sum('allocated_qty');
+
+                $status = 'Pending';
+                if ($existingAllocated >= $plannedQty && $plannedQty > 0) {
+                    $status = 'Fully Allocated';
+                } elseif ($existingAllocated > 0) {
+                    $status = 'Partially Allocated';
+                }
+
+                $req = BatchMaterialRequirement::firstOrCreate(
                     [
                         'batch_id'        => $batch->id,
                         'recipe_stage_id' => $stage->id,
                         'material_id'     => $material->material_id,
                     ],
                     [
-                        'planned_qty' => round($qty, 4),
-                        'uom_id'      => $material->uom_id,
-                        'status'      => 'Pending',
+                        'planned_qty'   => $plannedQty,
+                        'allocated_qty' => $existingAllocated,
+                        'uom_id'        => $material->uom_id,
+                        'status'        => $status,
                     ]
                 );
+
+                if ((float) $req->allocated_qty <= 0 && $existingAllocated > 0) {
+                    $req->allocated_qty = $existingAllocated;
+                    $req->status = $status;
+                    $req->save();
+                }
             }
         }
     }
@@ -170,366 +195,7 @@ class ProductionService
      */
     public function evaluateStageCompletion(BatchStageExecution $execution): array
     {
-        $execution->loadMissing([
-            'recipeStage.activities.activity',
-            'recipeStage.parameters.parameter',
-            'recipeStage.inputMaterials.material',
-            'recipeStage.outputMaterials',
-            'recipeStage.qcTests',
-            'activityExecutions.recipeStageActivity',
-            'parameterReadings.recipeParameter.parameter',
-            'outputs',
-            'qcRequest',
-            'authorizedByUser',
-        ]);
-
-        $recipeStage = $execution->recipeStage;
-        $checklist = [];
-        $operationalUnmet = [];
-        $allUnmet = [];
-
-        if ($execution->status === 'Skipped' && $recipeStage && ($recipeStage->is_optional || $recipeStage->is_conditional)) {
-            return [
-                'can_complete'           => true,
-                'can_unlock_next_stage'  => true,
-                'checklist'              => [[
-                    'key'    => 'skipped',
-                    'label'  => 'Optional / Conditional stage skipped',
-                    'status' => 'Skipped',
-                    'met'    => true,
-                ]],
-                'operational_unmet'      => [],
-                'unmet_reasons'          => [],
-            ];
-        }
-
-        // 1. Base Mandatory Check: Required Activities with Start & End Times
-        if ($recipeStage) {
-            $mandatoryActIds = $recipeStage->activities->where('is_mandatory', true)->pluck('id')->toArray();
-            $totalMandActs = count($mandatoryActIds);
-            if ($totalMandActs > 0) {
-                $completedMandActs = $execution->activityExecutions
-                    ->whereIn('recipe_stage_activity_id', $mandatoryActIds)
-                    ->filter(fn($a) => (!empty($a->start_datetime) || !empty($a->start_time)) && (!empty($a->end_datetime) || !empty($a->end_time)))
-                    ->count();
-
-                // If stage was already marked Completed in seed data without activity rows, treat as met
-                if ($execution->status === 'Completed' && $execution->activityExecutions->isEmpty()) {
-                    $completedMandActs = $totalMandActs;
-                }
-
-                $met = $completedMandActs >= $totalMandActs;
-                $label = "Required activities with start/end times: {$completedMandActs} of {$totalMandActs}: " . ($met ? 'met' : 'not met');
-                $checklist[] = [
-                    'key'   => 'activities',
-                    'label' => $label,
-                    'met'   => $met,
-                ];
-                if (!$met) {
-                    $operationalUnmet[] = $label;
-                    $allUnmet[] = $label;
-                }
-            }
-        }
-
-        // 2. Base Mandatory Check: Mandatory Parameter Readings Entered
-        if ($recipeStage) {
-            $mandatoryParamIds = $recipeStage->parameters->where('is_mandatory', true)->pluck('id')->toArray();
-            $totalMandParams = count($mandatoryParamIds);
-            if ($totalMandParams > 0) {
-                $enteredMandParams = $execution->parameterReadings
-                    ->whereIn('recipe_parameter_id', $mandatoryParamIds)
-                    ->filter(fn($r) => $r->actual_value !== null && trim((string) $r->actual_value) !== '')
-                    ->count();
-
-                if ($execution->status === 'Completed' && $execution->parameterReadings->isEmpty()) {
-                    $enteredMandParams = $totalMandParams;
-                }
-
-                $met = $enteredMandParams >= $totalMandParams;
-                $label = "Mandatory parameter readings: {$enteredMandParams} of {$totalMandParams} entered: " . ($met ? 'met' : 'not met');
-                $checklist[] = [
-                    'key'   => 'mandatory_readings',
-                    'label' => $label,
-                    'met'   => $met,
-                ];
-                if (!$met) {
-                    $operationalUnmet[] = $label;
-                    $allUnmet[] = $label;
-                }
-            }
-        }
-
-        // 3. Base Mandatory Check: Material Consumption Recorded
-        if ($recipeStage) {
-            $mandatoryInputs = $recipeStage->inputMaterials->where('is_mandatory', true);
-            $reqInputCount = $mandatoryInputs->count();
-            if ($reqInputCount > 0) {
-                $recordedInputs = BatchMaterialConsumption::where('batch_id', $execution->batch_id)
-                    ->where('recipe_stage_id', $recipeStage->id)
-                    ->where('actual_consumed_qty', '>', 0)
-                    ->count();
-
-                if ($execution->status === 'Completed' && $recordedInputs === 0) {
-                    $recordedInputs = $reqInputCount;
-                }
-
-                $met = $recordedInputs >= $reqInputCount;
-                $label = "Material consumption recorded ({$recordedInputs} of {$reqInputCount}): " . ($met ? 'met' : 'not met');
-                $checklist[] = [
-                    'key'   => 'material_consumption',
-                    'label' => $label,
-                    'met'   => $met,
-                ];
-                if (!$met) {
-                    $operationalUnmet[] = $label;
-                    $allUnmet[] = $label;
-                }
-            }
-        }
-
-        // 4. Base Mandatory Check: Mandatory Stage Outputs Recorded
-        if ($recipeStage) {
-            $mandatoryOutputs = $recipeStage->outputMaterials->where('is_mandatory', true);
-            $reqOutputCount = $mandatoryOutputs->count();
-            if ($reqOutputCount > 0) {
-                $recordedOutputs = $execution->outputs->where('actual_qty', '>', 0)->count();
-                if ($execution->status === 'Completed' && $recordedOutputs === 0) {
-                    $recordedOutputs = 1;
-                }
-                $met = $recordedOutputs > 0;
-                $label = "Stage output quantities recorded: " . ($met ? 'met' : 'not met');
-                $checklist[] = [
-                    'key'   => 'stage_outputs',
-                    'label' => $label,
-                    'met'   => $met,
-                ];
-                if (!$met) {
-                    $operationalUnmet[] = $label;
-                    $allUnmet[] = $label;
-                }
-            }
-        }
-
-        // 5. Section 7.2 Condition 1: Completion of a specified number of repetitions
-        $minReps = max(1, (int) ($recipeStage->min_repetitions ?? 1));
-        if ($minReps > 1 || ($recipeStage && $recipeStage->is_repeatable)) {
-            $allStageExecs = BatchStageExecution::where('batch_id', $execution->batch_id)
-                ->where('recipe_stage_id', $execution->recipe_stage_id)
-                ->orderBy('execution_number')
-                ->get();
-
-            $totalRepsCount = $allStageExecs->count();
-            $priorIncomplete = $allStageExecs
-                ->where('id', '!=', $execution->id)
-                ->where('execution_number', '<', $execution->execution_number)
-                ->whereNotIn('status', ['Completed', 'Approved'])
-                ->count();
-
-            $met = ($totalRepsCount >= $minReps) && ($priorIncomplete === 0);
-            $label = "Repetitions {$totalRepsCount} of {$minReps}: " . ($met ? 'met' : 'not met');
-            $checklist[] = [
-                'key'   => 'repetitions',
-                'label' => $label,
-                'met'   => $met,
-            ];
-            if (!$met) {
-                $operationalUnmet[] = $label;
-                $allUnmet[] = $label;
-            }
-        }
-
-        // 6. Section 7.2 Condition 2: Satisfaction of parameter acceptance criteria (and Deviation Action = Block)
-        if ($recipeStage) {
-            $acceptanceParamIds = is_array($recipeStage->acceptance_parameter_ids)
-                ? array_map('intval', $recipeStage->acceptance_parameter_ids)
-                : [];
-
-            foreach ($recipeStage->parameters as $rp) {
-                if ($rp->deviation_action === 'Block' && !in_array((int) $rp->parameter_id, $acceptanceParamIds, true)) {
-                    $acceptanceParamIds[] = (int) $rp->parameter_id;
-                }
-            }
-
-            foreach ($acceptanceParamIds as $paramId) {
-                $rp = $recipeStage->parameters->firstWhere('parameter_id', $paramId);
-                $reading = $execution->parameterReadings->first(function ($r) use ($paramId, $rp) {
-                    if ($rp && (int) $r->recipe_parameter_id === (int) $rp->id) {
-                        return true;
-                    }
-                    return $r->recipeParameter && (int) $r->recipeParameter->parameter_id === (int) $paramId;
-                });
-
-                $paramName = $reading?->parameter_name ?? $rp?->parameter?->name ?? "Parameter #{$paramId}";
-                $min = $reading?->min_value ?? $rp?->min_value;
-                $max = $reading?->max_value ?? $rp?->max_value;
-                $actual = $reading?->actual_value;
-
-                $rangeStr = ($min !== null && $min !== '' ? $min : '*') . '-' . ($max !== null && $max !== '' ? $max : '*');
-                $met = false;
-
-                if ($actual !== null && trim((string) $actual) !== '' && is_numeric($actual)) {
-                    $val = (float) $actual;
-                    $met = true;
-                    if ($min !== null && $min !== '' && is_numeric($min) && $val < (float) $min) {
-                        $met = false;
-                    }
-                    if ($max !== null && $max !== '' && is_numeric($max) && $val > (float) $max) {
-                        $met = false;
-                    }
-                }
-
-                $actualDisplay = ($actual !== null && trim((string) $actual) !== '') ? $actual : 'not entered';
-                $label = "{$paramName} {$actualDisplay}, accepted range {$rangeStr}: " . ($met ? 'met' : 'not met');
-                $checklist[] = [
-                    'key'   => "param_accept_{$paramId}",
-                    'label' => $label,
-                    'met'   => $met,
-                ];
-                if (!$met) {
-                    $operationalUnmet[] = $label;
-                    $allUnmet[] = $label;
-                }
-            }
-        }
-
-        // 7. Section 7.2 Condition 3: Achievement of expected process conditions
-        if ($recipeStage && !empty($recipeStage->expected_process_conditions) && is_array($recipeStage->expected_process_conditions)) {
-            foreach ($recipeStage->expected_process_conditions as $idx => $cond) {
-                $paramId = $cond['parameter_id'] ?? null;
-                $paramName = $cond['parameter_name'] ?? "Condition #" . ($idx + 1);
-                $operator = $cond['operator'] ?? '=';
-                $targetVal = $cond['value'] ?? null;
-                $maxVal = $cond['max_value'] ?? null;
-                $reqHoldMins = !empty($cond['hold_time_minutes']) ? (int) $cond['hold_time_minutes'] : null;
-
-                $reading = $execution->parameterReadings->first(function ($r) use ($paramId, $paramName) {
-                    if ($paramId && $r->recipeParameter && (int) $r->recipeParameter->parameter_id === (int) $paramId) {
-                        return true;
-                    }
-                    return strtolower((string) $r->parameter_name) === strtolower((string) $paramName);
-                });
-
-                if ($reading && $reading->parameter_name) {
-                    $paramName = $reading->parameter_name;
-                }
-
-                $actual = $reading?->actual_value;
-                $valueMet = false;
-
-                if ($actual !== null && trim((string) $actual) !== '') {
-                    if (is_numeric($actual) && is_numeric($targetVal)) {
-                        $a = (float) $actual;
-                        $t = (float) $targetVal;
-                        $valueMet = match ($operator) {
-                            '='       => abs($a - $t) < 0.0001,
-                            '>'       => $a > $t,
-                            '>='      => $a >= $t,
-                            '<'       => $a < $t,
-                            '<='      => $a <= $t,
-                            'between' => $a >= $t && ($maxVal !== null && is_numeric($maxVal) ? $a <= (float) $maxVal : true),
-                            default   => $a == $t,
-                        };
-                    } else {
-                        $valueMet = strtolower(trim((string) $actual)) === strtolower(trim((string) $targetVal));
-                    }
-                }
-
-                $holdMet = true;
-                $actualHold = (int) ($execution->actual_hold_time_minutes ?? $execution->duration_minutes ?? 0);
-                if ($reqHoldMins !== null && $reqHoldMins > 0) {
-                    $holdMet = $actualHold >= $reqHoldMins;
-                }
-
-                $met = $valueMet && $holdMet;
-                $condSpec = $operator === 'between' ? "between {$targetVal} and {$maxVal}" : "{$operator} {$targetVal}";
-                if ($reqHoldMins) {
-                    $condSpec .= " (hold {$reqHoldMins} min, actual {$actualHold} min)";
-                }
-                $actualStr = ($actual !== null && trim((string) $actual) !== '') ? $actual : 'not entered';
-                $label = "Process condition {$paramName} {$condSpec} (actual: {$actualStr}): " . ($met ? 'met' : 'not met');
-
-                $checklist[] = [
-                    'key'   => "process_cond_{$idx}",
-                    'label' => $label,
-                    'met'   => $met,
-                ];
-                if (!$met) {
-                    $operationalUnmet[] = $label;
-                    $allUnmet[] = $label;
-                }
-            }
-        }
-
-        // 8. Section 7.2 Condition 4: Required Quality Approval
-        $qcRequired = $recipeStage && (
-            $recipeStage->qc_required ||
-            $recipeStage->qcTests->where('blocks_next_stage', true)->isNotEmpty()
-        );
-        // Also check if any parameter had Deviation Action = 'QC Approval Required' and is out of range
-        if ($recipeStage && !$qcRequired) {
-            foreach ($execution->parameterReadings as $r) {
-                if (!$r->is_within_range && $r->recipeParameter && $r->recipeParameter->deviation_action === 'QC Approval Required') {
-                    $qcRequired = true;
-                    break;
-                }
-            }
-        }
-
-        if ($qcRequired) {
-            $qcApproved = ($execution->qc_status === 'Approved') || ($execution->qcRequest && $execution->qcRequest->status === 'Approved');
-            $qcStateText = $qcApproved
-                ? 'approved'
-                : ($execution->qc_status === 'Rework Required' ? 'rework required' : ($execution->qc_status === 'Rejected' ? 'rejected' : 'pending'));
-            $label = "QC approval: {$qcStateText}";
-            $checklist[] = [
-                'key'   => 'qc_approval',
-                'label' => $label,
-                'met'   => $qcApproved,
-            ];
-            if (!$qcApproved) {
-                $allUnmet[] = $label;
-            }
-        }
-
-        // 9. Section 7.2 Condition 5: Manual Authorization by a Supervisor
-        if ($recipeStage && $recipeStage->supervisor_auth_required) {
-            $authorized = !empty($execution->supervisor_authorized_by) && !empty($execution->supervisor_authorized_at);
-            if ($authorized) {
-                $byName = $execution->authorizedByUser?->name ?? 'Supervisor';
-                $atStr = Carbon::parse($execution->supervisor_authorized_at)->format('d-m-Y H:i');
-                $label = "Supervisor authorization: authorized by {$byName} ({$atStr})";
-            } else {
-                $label = "Supervisor authorization: not authorized";
-            }
-            $checklist[] = [
-                'key'   => 'supervisor_authorization',
-                'label' => $label,
-                'met'   => $authorized,
-            ];
-            if (!$authorized) {
-                $operationalUnmet[] = $label;
-                $allUnmet[] = $label;
-            }
-        }
-
-        // Determine if "Complete Stage and Move to Next" button can be clicked:
-        // - If stage is already in 'QC Pending' or 'Rework Required', it cannot be completed until QC approves.
-        // - All operational conditions (activities, readings, consumption, outputs, repetitions, parameter acceptance, process conditions, supervisor authorization) must be met.
-        $canComplete = empty($operationalUnmet) && !in_array($execution->status, ['QC Pending', 'Rework Required', 'Completed', 'Skipped'], true);
-
-        // Next stage can unlock ONLY when the stage is Completed/Approved (or Skipped) AND every condition including QC is met.
-        $isStageStatusComplete = in_array($execution->status, ['Completed', 'Approved'], true);
-        $canUnlockNextStage = $isStageStatusComplete && empty($allUnmet);
-
-        return [
-            'can_complete'          => $canComplete,
-            'can_unlock_next_stage' => $canUnlockNextStage,
-            'qc_required'           => $qcRequired,
-            'checklist'             => $checklist,
-            'operational_unmet'     => $operationalUnmet,
-            'unmet_reasons'         => $allUnmet,
-        ];
+        return app(StageRequirementEvaluator::class)->evaluate($execution);
     }
 
     /**
@@ -903,55 +569,20 @@ class ProductionService
                 $execution->qc_status = 'Pending';
                 $execution->save();
 
-                $existingQc = QcRequest::where('batch_stage_execution_id', $execution->id)
-                    ->where('status', 'Pending')
-                    ->first();
-
-                if (!$existingQc) {
-                    $qcReq = QcRequest::create([
-                        'qc_request_number'        => $this->docService->generate('QC Request Number'),
-                        'batch_id'                 => $execution->batch_id,
-                        'batch_stage_execution_id' => $execution->id,
-                        'stage_name'               => $execution->stage_name,
-                        'request_date'             => now(),
-                        'submitted_by'             => Auth::id() ?? $execution->batch->supervisor_id ?? 1,
-                        'status'                   => 'Pending',
-                    ]);
-
-                    if ($execution->recipeStage) {
-                        foreach ($execution->recipeStage->qcTests as $qcTest) {
-                            if ($qcTest->qcTest) {
-                                QcRequestResult::create([
-                                    'qc_request_id'  => $qcReq->id,
-                                    'qc_test_id'     => $qcTest->qc_test_id,
-                                    'test_name'      => $qcTest->qcTest->test_name ?? $qcTest->qcTest->name,
-                                    'test_method'    => $qcTest->qcTest->test_method,
-                                    'result_type'    => $qcTest->qcTest->result_type ?? 'Numeric',
-                                    'uom'            => $qcTest->qcTest->uom,
-                                    'expected_min'   => $qcTest->min_value,
-                                    'expected_max'   => $qcTest->max_value,
-                                    'expected_value' => $qcTest->target_value,
-                                ]);
-                            }
-                        }
-                    }
-
-                    NotificationService::notifyRole(
-                        'qc_manager',
-                        'QC Pending',
-                        "Batch {$execution->batch->batch_number} - Stage {$execution->stage_name} submitted for QC review.",
-                        route('qc.show', $qcReq->id),
-                        'qc_pending'
-                    );
-                }
+                $qcReq = app(QcService::class)->createForStageExecution(
+                    $execution,
+                    Auth::id() ?? $execution->batch->supervisor_id ?? 1
+                );
 
                 $batch = $execution->batch;
                 $batch->status = 'QC Pending';
                 $batch->save();
 
                 AuditService::log('Production', 'Submit Stage for QC', "Batch: {$execution->batch->batch_number}, Stage: {$execution->stage_name}", null, [
-                    'execution_id' => $execution->id,
-                    'status'       => 'QC Pending',
+                    'execution_id'      => $execution->id,
+                    'qc_request_id'     => $qcReq->id,
+                    'qc_request_number' => $qcReq->qc_request_number,
+                    'status'            => 'QC Pending',
                 ], 'Stage submitted to QC; next stage remains locked until QC approval');
 
                 return;

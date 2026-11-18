@@ -42,7 +42,14 @@ class BatchController extends Controller
         }
 
         if ($status = $request->input('status')) {
-            $query->where('status', $status);
+            if ($status === 'QC Pending') {
+                $query->where(function ($q) {
+                    $q->where('status', 'QC Pending')
+                        ->orWhereHas('stageExecutions', fn ($sq) => $sq->where('status', 'QC Pending'));
+                });
+            } else {
+                $query->where('status', $status);
+            }
         }
 
         if ($productId = $request->input('product_id')) {
@@ -156,11 +163,16 @@ class BatchController extends Controller
             'stageExecutions.parameters',
             'stageExecutions.outputs',
             'stageExecutions.equipment',
+            'stageExecutions.qcRequest',
+            'qcRequests.submittedByUser',
+            'qcRequests.decisionByUser',
             'holds.heldByUser',
             'reconciliation',
         ]);
 
-        return view('production.batches.show', compact('batch'));
+        return response()
+            ->view('production.batches.show', compact('batch'))
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
     }
 
     public function start(Batch $batch)

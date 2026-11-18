@@ -36,8 +36,9 @@
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Mobile Number</label>
-                            <input type="text" name="mobile" class="form-control"
-                                value="{{ old('mobile', $supplier->mobile) }}">
+                            <input type="text" name="mobile" class="form-control @error('mobile') is-invalid @enderror"
+                                value="{{ old('mobile', $supplier->mobile) }}" placeholder="9876543210" maxlength="10" minlength="10" pattern="[0-9]{10}" inputmode="numeric" title="Mobile number must be exactly 10 digits">
+                            @error('mobile')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Email Address</label>
@@ -54,7 +55,8 @@
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">PAN</label>
-                            <input type="text" name="pan" class="form-control" value="{{ old('pan', $supplier->pan) }}">
+                            <input type="text" name="pan" class="form-control @error('pan') is-invalid @enderror" value="{{ old('pan', $supplier->pan) }}" placeholder="ABCDE1234F" maxlength="10" minlength="10" pattern="[A-Za-z0-9]{10}" title="PAN must be exactly 10 alphanumeric characters">
+                            @error('pan')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Payment Terms</label>

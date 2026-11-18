@@ -4,7 +4,7 @@
     <div class="container-fluid px-0">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
-                <h2 class="page-title">Purchase Requisitions (Indent)</h2>
+                <h2 class="page-title">Purchase Requisitions</h2>
                 <p class="page-subtitle">Internal material requests raised by plant supervisors, production managers, or
                     automated MRP.</p>
             </div>

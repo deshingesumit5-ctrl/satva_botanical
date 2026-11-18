@@ -22,7 +22,7 @@ class CommercialCostingTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->admin = User::where('username', 'admin')->first();
+        $this->admin = User::where('email', 'admin@gmail.com')->first();
     }
 
     public function test_can_view_purchase_pages(): void

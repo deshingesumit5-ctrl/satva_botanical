@@ -19,10 +19,11 @@
                     <tr>
                         <th width="60">#</th>
                         <th>Bill Reference</th>
-                        <th>Invoice No</th>
+                        <th>Vendor Invoice No</th>
                         <th>Supplier</th>
                         <th>GRN Number</th>
                         <th>Bill Amount (₹)</th>
+                        <th>Balance (₹)</th>
                         <th>Status</th>
                         <th width="120" class="text-end">Actions</th>
                     </tr>
@@ -31,18 +32,19 @@
                     @forelse($invoices as $idx => $pi)
                     <tr>
                         <td>{{ $invoices->firstItem() + $idx }}</td>
-                        <td class="fw-bold font-monospace text-success">{{ $pi->bill_number ?? 'BILL-'.str_pad($pi->id, 5, '0', STR_PAD_LEFT) }}</td>
-                        <td>{{ $pi->invoice_number }}</td>
+                        <td class="fw-bold font-monospace text-success">{{ $pi->internal_invoice_number }}</td>
+                        <td>{{ $pi->supplier_invoice_number }}</td>
                         <td class="fw-semibold text-dark">{{ $pi->supplier->name ?? '-' }}</td>
                         <td>{{ $pi->grn->grn_number ?? '-' }}</td>
                         <td class="fw-bold">₹{{ number_format($pi->total_amount, 2) }}</td>
-                        <td><span class="badge-status badge-status-{{ strtolower($pi->status) }}">{{ $pi->status }}</span></td>
+                        <td class="text-danger fw-semibold">₹{{ number_format($pi->balance_amount ?? max(0, $pi->total_amount - $pi->paid_amount), 2) }}</td>
+                        <td><span class="badge-status badge-status-{{ strtolower(str_replace(' ', '-', $pi->payment_status)) }}">{{ $pi->payment_status }}</span></td>
                         <td class="text-end">
                             <a href="{{ route('sales.purchase-invoices.show', $pi) }}" class="btn btn-sm btn-icon btn-outline-secondary"><i class="bi bi-eye"></i></a>
                         </td>
                     </tr>
                     @empty
-                    <tr><td colspan="8" class="text-center py-4 text-muted">No vendor purchase bills recorded.</td></tr>
+                    <tr><td colspan="9" class="text-center py-4 text-muted">No vendor purchase bills recorded.</td></tr>
                     @endforelse
                 </tbody>
             </table>

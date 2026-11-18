@@ -15,6 +15,7 @@ use App\Services\StockService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
 
 class DispatchController extends Controller
 {
@@ -29,12 +30,12 @@ class DispatchController extends Controller
 
     public function index(Request $request)
     {
-        $query = Dispatch::with(['customer', 'salesOrder', 'items.product', 'items.stockLot']);
+        $query = Dispatch::with(['customer', 'salesOrder', 'salesInvoice', 'items.product', 'items.stockLot']);
 
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('dispatch_number', 'like', "%{$search}%")
-                  ->orWhere('transporter_name', 'like', "%{$search}%")
+                  ->orWhere('transport_details', 'like', "%{$search}%")
                   ->orWhere('vehicle_number', 'like', "%{$search}%")
                   ->orWhereHas('customer', function ($cq) use ($search) {
                       $cq->where('name', 'like', "%{$search}%");
@@ -49,21 +50,25 @@ class DispatchController extends Controller
 
     public function create(Request $request)
     {
-        $orders = SalesOrder::whereIn('status', ['Approved', 'Dispatched'])->with(['customer', 'items.product'])->get();
-        $customers = Customer::where('status', 'Active')->get();
+        $orders = SalesOrder::whereIn('status', ['Confirmed', 'In Progress', 'Partially Dispatched'])
+            ->with(['customer', 'items.product'])
+            ->latest()
+            ->get();
+        $customers = Customer::where('status', 'Active')->orderBy('name')->get();
 
         $selectedOrder = null;
         if ($orderId = $request->input('order_id')) {
             $selectedOrder = SalesOrder::with(['customer', 'items.product.baseUom', 'items.uom'])->find($orderId);
         }
 
-        // Get available Finished Goods stock lots
-        $availableLots = StockLot::with('product')
+        // Get available Finished Goods stock lots grouped by product_id
+        $availableLots = StockLot::with(['product.baseUom', 'warehouse'])
             ->whereNotNull('product_id')
             ->where('status', 'Active')
             ->where('available_qty', '>', 0)
             ->where('qc_status', 'QC Approved')
-            ->get();
+            ->get()
+            ->groupBy('product_id');
 
         return view('sales.dispatch.create', compact('orders', 'customers', 'selectedOrder', 'availableLots'));
     }
@@ -86,34 +91,43 @@ class DispatchController extends Controller
             'items.*.uom_id' => 'required|exists:uoms,id',
         ]);
 
-        $dispatchNumber = $this->docService->generate('DISPATCH');
-
         try {
-            $dispatch = DB::transaction(function () use ($validated, $dispatchNumber) {
-                $order = SalesOrder::findOrFail($validated['sales_order_id']);
+            $dispatch = DB::transaction(function () use ($validated) {
+                $order = SalesOrder::lockForUpdate()->findOrFail($validated['sales_order_id']);
+                $dispatchNumber = $this->docService->generate('DISPATCH');
+
+                $transportDetails = trim((string) ($validated['transporter_name'] ?? ''));
+                if (!empty($validated['lr_number'])) {
+                    $transportDetails = $transportDetails
+                        ? "{$transportDetails} ({$validated['lr_number']})"
+                        : $validated['lr_number'];
+                }
 
                 $dispatchRecord = Dispatch::create([
                     'dispatch_number' => $dispatchNumber,
                     'sales_order_id' => $order->id,
                     'customer_id' => $validated['customer_id'],
                     'dispatch_date' => $validated['dispatch_date'],
-                    'transporter_name' => $validated['transporter_name'] ?? null,
+                    'transport_details' => $transportDetails ?: null,
                     'vehicle_number' => $validated['vehicle_number'] ?? null,
-                    'lr_number' => $validated['lr_number'] ?? null,
                     'status' => 'Dispatched',
                     'remarks' => $validated['remarks'] ?? null,
-                    'dispatched_by' => Auth::id(),
+                    'created_by' => Auth::id(),
                 ]);
 
-                $allFulfilled = true;
-
                 foreach ($validated['items'] as $item) {
-                    $orderItem = SalesOrderItem::findOrFail($item['sales_order_item_id']);
+                    $orderItem = SalesOrderItem::lockForUpdate()->findOrFail($item['sales_order_item_id']);
+                    $pendingQty = max(0, (float) $orderItem->quantity - (float) $orderItem->dispatched_qty);
+                    $qtyToDispatch = (float) $item['dispatched_qty'];
 
-                    // StockService dispatches from stock lot (Validates available stock and QC approval - Validation 20)
+                    if ($qtyToDispatch > $pendingQty + 0.0001) {
+                        throw new RuntimeException("Dispatch quantity ({$qtyToDispatch}) exceeds pending order quantity ({$pendingQty}) for {$orderItem->item_name}.");
+                    }
+
+                    // StockService dispatches from stock lot (Validates available stock and QC approval)
                     $this->stockService->dispatch(
-                        $item['stock_lot_id'],
-                        $item['dispatched_qty'],
+                        (int) $item['stock_lot_id'],
+                        $qtyToDispatch,
                         $dispatchNumber,
                         $dispatchRecord->id
                     );
@@ -123,35 +137,45 @@ class DispatchController extends Controller
                         'sales_order_item_id' => $orderItem->id,
                         'product_id' => $item['product_id'],
                         'stock_lot_id' => $item['stock_lot_id'],
-                        'dispatched_qty' => $item['dispatched_qty'],
+                        'quantity' => $qtyToDispatch,
                         'uom_id' => $item['uom_id'],
                     ]);
 
-                    $orderItem->dispatched_qty += $item['dispatched_qty'];
+                    $orderItem->dispatched_qty = (float) $orderItem->dispatched_qty + $qtyToDispatch;
                     $orderItem->save();
-
-                    if ($orderItem->dispatched_qty < $orderItem->quantity) {
-                        $allFulfilled = false;
-                    }
                 }
 
-                $order->status = $allFulfilled ? 'Complete' : 'Dispatched';
+                $allFulfilled = $order->items()->get()->every(function ($oi) {
+                    return (float) $oi->dispatched_qty >= (float) $oi->quantity;
+                });
+
+                $order->status = $allFulfilled ? 'Fully Dispatched' : 'Partially Dispatched';
                 $order->save();
 
                 AuditService::log('sales', $dispatchRecord->dispatch_number, 'dispatch_stock', null, $dispatchRecord->toArray(), 'Stock dispatched for sales order');
                 return $dispatchRecord;
             });
 
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => "Dispatch Note {$dispatch->dispatch_number} posted and stock deducted from FG.",
+                    'redirect' => route('sales.dispatch.index'),
+                ]);
+            }
+
             return redirect()->route('sales.dispatch.show', $dispatch->id)
                 ->with('success', "Dispatch Note {$dispatch->dispatch_number} posted and stock deducted from FG.");
         } catch (\Exception $e) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Dispatch failed: ' . $e->getMessage()], 422);
+            }
             return back()->withInput()->with('error', 'Dispatch failed: ' . $e->getMessage());
         }
     }
 
     public function show(Dispatch $dispatch)
     {
-        $dispatch->load(['customer', 'salesOrder', 'items.product', 'items.stockLot.warehouse', 'items.uom']);
+        $dispatch->load(['customer', 'salesOrder', 'salesInvoice', 'items.product', 'items.stockLot.warehouse', 'items.uom']);
         return view('sales.dispatch.show', compact('dispatch'));
     }
 

@@ -6,11 +6,20 @@ use App\Models\Department;
 use App\Models\Plant;
 use App\Models\Role;
 use App\Models\User;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 use Tests\TestCase;
 
 class LoginRedesignTest extends TestCase
 {
+    use DatabaseTransactions;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        RateLimiter::clear('login:127.0.0.1');
+    }
     public function test_login_page_renders_with_redesigned_layout_and_elements(): void
     {
         $response = $this->get('/login');
@@ -72,37 +81,42 @@ class LoginRedesignTest extends TestCase
 
     public function test_inactive_user_is_blocked_with_clear_error(): void
     {
-        $inactive = User::firstOrCreate(
+        $roleId = Role::where('role_code', '!=', 'super_admin')->value('id') ?? 2;
+        $inactive = User::withTrashed()->updateOrCreate(
             ['username' => 'test_inactive_account'],
             [
                 'user_id' => 'USR-INACT-001',
                 'name' => 'Inactive User',
                 'email' => 'inactive_user@sattvabotanical.local',
                 'password' => Hash::make('SecretPass@123'),
-                'role_id' => 1,
+                'role_id' => $roleId,
                 'status' => 'Inactive',
+                'deleted_at' => null,
             ]
         );
 
-        $response = $this->from('/login')->post('/login', [
-            'login' => 'test_inactive_account',
-            'password' => 'SecretPass@123',
-        ]);
+        try {
+            $response = $this->from('/login')->post('/login', [
+                'login' => 'test_inactive_account',
+                'password' => 'SecretPass@123',
+            ]);
 
-        $this->assertGuest();
-        $response->assertRedirect('/login');
-        $response->assertSessionHas('error', 'Your account is inactive. Please contact your system administrator.');
+            $this->assertGuest();
+            $response->assertRedirect('/login');
+            $response->assertSessionHas('error', 'Your account is inactive. Please contact your system administrator.');
 
-        $follow = $this->get('/login');
-        $follow->assertSee('Your account is inactive. Please contact your system administrator.');
+            $follow = $this->get('/login');
+            $follow->assertSee('Your account is inactive. Please contact your system administrator.');
+        } finally {
+            $inactive->forceDelete();
+        }
     }
 
     public function test_admin_user_update_saves_email_and_password_and_allows_login(): void
     {
-        $admin = User::where('username', 'admin')->first();
+        $admin = User::where('email', 'admin@gmail.com')->first();
         $this->assertNotNull($admin);
 
-        $originalEmail = $admin->email;
         $newEmail = 'admin_updated_' . time() . '@sattvabotanical.local';
         $newPassword = 'NewSecretPassword@123';
 
@@ -132,7 +146,7 @@ class LoginRedesignTest extends TestCase
         // Login with old password must fail
         $failResponse = $this->post('/login', [
             'login' => $newEmail,
-            'password' => 'Admin@12345',
+            'password' => 'admin@123',
         ]);
         $this->assertGuest();
         $failResponse->assertSessionHasErrors('login');
@@ -144,11 +158,5 @@ class LoginRedesignTest extends TestCase
         ]);
         $this->assertAuthenticatedAs($admin);
         $successResponse->assertRedirect(route('dashboard'));
-
-        // Restore original credentials
-        $admin->email = $originalEmail;
-        $admin->name = 'Admin User';
-        $admin->password = Hash::make('Admin@12345');
-        $admin->save();
     }
 }

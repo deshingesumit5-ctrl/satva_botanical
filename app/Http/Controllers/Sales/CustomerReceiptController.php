@@ -28,7 +28,7 @@ class CustomerReceiptController extends Controller
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('receipt_number', 'like', "%{$search}%")
-                  ->orWhere('payment_reference', 'like', "%{$search}%")
+                  ->orWhere('reference_number', 'like', "%{$search}%")
                   ->orWhereHas('customer', function ($cq) use ($search) {
                       $cq->where('name', 'like', "%{$search}%");
                   });
@@ -40,59 +40,66 @@ class CustomerReceiptController extends Controller
         return view('sales.receipts.index', compact('receipts'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $customers = Customer::where('status', 'Active')->orderBy('name')->get();
-        $invoices = SalesInvoice::whereIn('payment_status', ['Unpaid', 'Partially Paid'])->with('customer')->get();
+        $invoices = SalesInvoice::whereIn('payment_status', ['Unpaid', 'Partially Paid'])
+            ->with('customer')
+            ->latest()
+            ->get();
+        $selectedInvoiceId = $request->input('invoice_id');
 
-        return view('sales.receipts.create', compact('customers', 'invoices'));
+        return view('sales.receipts.create', compact('customers', 'invoices', 'selectedInvoiceId'));
     }
 
     public function store(Request $request)
     {
+        if (!$request->filled('reference_number') && $request->filled('payment_reference')) {
+            $request->merge(['reference_number' => $request->input('payment_reference')]);
+        }
+
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
-            'sales_invoice_id' => 'nullable|exists:sales_invoices,id',
+            'sales_invoice_id' => 'required|exists:sales_invoices,id',
             'receipt_date' => 'required|date',
             'amount' => 'required|numeric|min:0.01',
-            'payment_mode' => 'required|in:Bank Transfer,Cheque,NEFT/RTGS,UPI,Cash',
-            'payment_reference' => 'nullable|string|max:100',
+            'payment_mode' => 'required|in:Bank Transfer,Cheque,Cash,UPI',
+            'reference_number' => 'nullable|string|max:50',
             'remarks' => 'nullable|string',
         ]);
 
         $receiptNumber = $this->docService->generate('RECEIPT');
 
         $receipt = DB::transaction(function () use ($validated, $receiptNumber) {
+            $inv = SalesInvoice::lockForUpdate()->findOrFail($validated['sales_invoice_id']);
+
             $receiptRecord = CustomerReceipt::create([
                 'receipt_number' => $receiptNumber,
                 'customer_id' => $validated['customer_id'],
-                'sales_invoice_id' => $validated['sales_invoice_id'] ?? null,
+                'sales_invoice_id' => $inv->id,
                 'receipt_date' => $validated['receipt_date'],
                 'amount' => $validated['amount'],
                 'payment_mode' => $validated['payment_mode'],
-                'reference_number' => $validated['payment_reference'] ?? null,
+                'reference_number' => $validated['reference_number'] ?? null,
                 'remarks' => $validated['remarks'] ?? null,
                 'created_by' => Auth::id(),
             ]);
 
-            // Update sales invoice paid amount
-            if (!empty($validated['sales_invoice_id'])) {
-                $inv = SalesInvoice::find($validated['sales_invoice_id']);
-                if ($inv) {
-                    $inv->paid_amount += $validated['amount'];
-                    $inv->balance_amount = max(0, (float)$inv->total_amount - (float)$inv->paid_amount);
-                    if ($inv->paid_amount >= $inv->total_amount) {
-                        $inv->payment_status = 'Paid';
-                    } else {
-                        $inv->payment_status = 'Partially Paid';
-                    }
-                    $inv->save();
-                }
-            }
+            $inv->paid_amount = (float) $inv->paid_amount + (float) $validated['amount'];
+            $inv->balance_amount = max(0, (float) $inv->total_amount - (float) $inv->paid_amount);
+            $inv->payment_status = ($inv->paid_amount >= (float) $inv->total_amount) ? 'Paid' : 'Partially Paid';
+            $inv->save();
 
             AuditService::log('accounts', $receiptRecord->receipt_number, 'customer_receipt', null, $receiptRecord->toArray(), 'Recorded customer receipt');
             return $receiptRecord;
         });
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => "Receipt {$receipt->receipt_number} recorded.",
+                'redirect' => route('sales.receipts.index'),
+            ]);
+        }
 
         return redirect()->route('sales.receipts.index')
             ->with('success', "Receipt {$receipt->receipt_number} recorded.");

@@ -411,8 +411,8 @@ window.isModalEligibleFormUrl = function (rawUrl) {
 /**
  * Determine modal size class based on route path:
  * - modal-xl for documents with item grids (PR, PO, GRN, Sales Order, Invoices)
- * - modal-lg (~800px, 2 columns) for large masters/forms (Product, Material, Supplier, Customer, Equipment, User, etc.)
- * - standard (~500px) for short forms
+ * - modal-lg (~860px, 2-3 columns) for multi-column masters/forms (Recipe, Opening Stock, Product, Material, Supplier, Customer, Equipment, Parameter, QC Test, Stage, Warehouse, Location, User, Plans, Batches, Transfers, Adjustments, Costing, Commercial)
+ * - standard (~650px) for short forms
  */
 window.resolveModalSizeClasses = function (rawUrl) {
     let path = '';
@@ -427,23 +427,37 @@ window.resolveModalSizeClasses = function (rawUrl) {
         path.startsWith('/purchase/orders') ||
         path.startsWith('/purchase/grn') ||
         path.startsWith('/sales/orders') ||
-        path.startsWith('/sales/invoices') ||
-        path.startsWith('/sales/purchase-invoices')
+        path.startsWith('/sales/invoices')
     ) {
         return ['modal-xl', 'sattva-modal-xl'];
     }
 
     if (
+        path.startsWith('/recipe') ||
+        path.startsWith('/inventory/stock') ||
+        path.startsWith('/inventory/adjustments') ||
+        path.startsWith('/inventory/transfers') ||
+        path.startsWith('/inventory/recovery') ||
+        path.startsWith('/inventory/waste') ||
         path.startsWith('/masters/products') ||
         path.startsWith('/masters/materials') ||
         path.startsWith('/masters/suppliers') ||
         path.startsWith('/masters/customers') ||
         path.startsWith('/masters/equipments') ||
+        path.startsWith('/masters/parameters') ||
+        path.startsWith('/masters/qc-tests') ||
+        path.startsWith('/masters/stages') ||
+        path.startsWith('/masters/warehouses') ||
+        path.startsWith('/masters/locations') ||
         path.startsWith('/admin/users') ||
         path.startsWith('/production/plans') ||
         path.startsWith('/production/batches') ||
         path.startsWith('/sales/dispatch') ||
-        path.startsWith('/inventory/transfers')
+        path.startsWith('/sales/purchase-invoices') ||
+        path.startsWith('/sales/notes') ||
+        path.startsWith('/sales/payments') ||
+        path.startsWith('/sales/receipts') ||
+        path.startsWith('/costing/expenses')
     ) {
         return ['modal-lg', 'sattva-modal-lg'];
     }
@@ -483,13 +497,17 @@ window.upgradeInlineModals = function (root) {
     const scope = root || document;
     scope.querySelectorAll('.modal:not(#squareConfirmModal):not(#sattvaDynamicFormModal)').forEach(function (modalEl) {
         const dialog = modalEl.querySelector('.modal-dialog');
+        const form = modalEl.querySelector('form');
         if (dialog) {
             dialog.classList.add('modal-dialog-centered', 'modal-dialog-scrollable');
-            if (!dialog.classList.contains('modal-lg') && !dialog.classList.contains('modal-xl')) {
+            const hasMultiCols = modalEl.querySelector('.col-4, .col-md-4, .col-3, .col-md-3') || modalEl.querySelectorAll('.row .form-select').length >= 2;
+            if (hasMultiCols && !dialog.classList.contains('modal-xl')) {
+                dialog.classList.remove('sattva-modal-standard');
+                dialog.classList.add('modal-lg', 'sattva-modal-lg');
+            } else if (!dialog.classList.contains('modal-lg') && !dialog.classList.contains('modal-xl')) {
                 dialog.classList.add('sattva-modal-standard');
             }
         }
-        const form = modalEl.querySelector('form');
         if (form) {
             form.classList.add('sattva-ajax-form');
             window.normalizeModalStatusField(form);
@@ -502,8 +520,9 @@ window.upgradeInlineModals = function (root) {
  */
 window.clearFormValidationErrors = function (form) {
     if (!form) return;
-    form.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
-    form.querySelectorAll('.modal-field-error, .modal-general-error').forEach(el => el.remove());
+    const scope = form.closest('.modal-body') || form;
+    scope.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+    scope.querySelectorAll('.modal-field-error, .modal-general-error').forEach(el => el.remove());
 };
 
 /**
@@ -562,7 +581,13 @@ window.renderFormValidationErrors = function (form, errors, generalMessage) {
 window.refreshCurrentListView = async function (fallbackRedirectUrl) {
     let targetUrl = window.location.href;
     if (window.isModalEligibleFormUrl(targetUrl)) {
-        targetUrl = fallbackRedirectUrl || targetUrl.replace(/\/(create|\d+\/edit)$/, '');
+        try {
+            const u = new URL(targetUrl, window.location.origin);
+            const cleanPath = u.pathname.replace(/\/+$/, '').replace(/\/(create|\d+\/edit)$/, '');
+            targetUrl = fallbackRedirectUrl || (u.origin + cleanPath);
+        } catch (e) {
+            targetUrl = fallbackRedirectUrl || targetUrl.replace(/\/(create|\d+\/edit)(\?.*)?$/, '');
+        }
     }
 
     try {
@@ -887,3 +912,278 @@ window.handleDirectCreateOrEditUrlVisit = async function () {
         await window.refreshCurrentListView(backLink);
     }
 };
+
+// ============================================================================
+// CUSTOM CONTAINED SELECT DROPDOWN ENGINE
+// Keeps all .form-select dropdown menus strictly below the select box ("square box")
+// with exact matching width so they never overflow outside the box or modal.
+// ============================================================================
+(function () {
+    let activeSelect = null;
+    let activeMenu = null;
+    let lastMousedownTime = 0;
+
+    function closeSattvaSelectMenu() {
+        if (activeSelect) {
+            activeSelect.classList.remove('sattva-select-open');
+            activeSelect = null;
+        }
+        if (activeMenu) {
+            activeMenu.remove();
+            activeMenu = null;
+        }
+    }
+
+    function positionSattvaSelectMenu() {
+        if (!activeSelect || !activeMenu) return;
+        if (!document.body.contains(activeSelect)) {
+            closeSattvaSelectMenu();
+            return;
+        }
+
+        const rect = activeSelect.getBoundingClientRect();
+        if (rect.width === 0 && rect.height === 0) {
+            closeSattvaSelectMenu();
+            return;
+        }
+
+        const boxWidth = Math.round(rect.width);
+        const topPos = Math.round(rect.bottom + 2);
+        const leftPos = Math.round(rect.left);
+
+        activeMenu.style.left = leftPos + 'px';
+        activeMenu.style.top = topPos + 'px';
+        activeMenu.style.width = boxWidth + 'px';
+        activeMenu.style.minWidth = boxWidth + 'px';
+        activeMenu.style.maxWidth = boxWidth + 'px';
+
+        const modalContent = activeSelect.closest('.modal-content');
+        if (modalContent) {
+            const modalRect = modalContent.getBoundingClientRect();
+            const availInsideModal = Math.floor(modalRect.bottom - topPos - 8);
+            activeMenu.style.maxHeight = Math.max(85, Math.min(220, availInsideModal)) + 'px';
+        } else {
+            const availViewport = Math.floor(window.innerHeight - topPos - 12);
+            activeMenu.style.maxHeight = Math.max(110, Math.min(260, availViewport)) + 'px';
+        }
+    }
+
+    function openSattvaSelectMenu(selectEl) {
+        if (!selectEl || selectEl.disabled) return;
+        closeSattvaSelectMenu();
+
+        // If inside a scrollable modal body and too close to its bottom edge, scroll down slightly so menu has room below the box
+        const modalBody = selectEl.closest('.modal-body');
+        if (modalBody && modalBody.scrollHeight > modalBody.clientHeight) {
+            const selRect = selectEl.getBoundingClientRect();
+            const bodyRect = modalBody.getBoundingClientRect();
+            const spaceBelow = bodyRect.bottom - selRect.bottom;
+            if (spaceBelow < 140) {
+                modalBody.scrollTop += (140 - spaceBelow);
+            }
+        }
+
+        activeSelect = selectEl;
+        activeSelect.classList.add('sattva-select-open');
+
+        const menu = document.createElement('div');
+        menu.className = 'sattva-custom-select-menu';
+        menu.setAttribute('role', 'listbox');
+
+        Array.from(selectEl.options).forEach(function (opt, idx) {
+            const item = document.createElement('div');
+            item.className = 'sattva-custom-select-option';
+            item.setAttribute('role', 'option');
+            item.dataset.index = String(idx);
+            item.dataset.value = opt.value;
+            item.textContent = opt.text;
+
+            if (opt.disabled) {
+                item.classList.add('is-disabled');
+            }
+            if (idx === selectEl.selectedIndex) {
+                item.classList.add('is-selected');
+            }
+
+            item.addEventListener('mousedown', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (opt.disabled) return;
+
+                const targetSelect = activeSelect;
+                closeSattvaSelectMenu();
+
+                if (targetSelect) {
+                    targetSelect.selectedIndex = idx;
+                    targetSelect.value = opt.value;
+                    targetSelect.dispatchEvent(new Event('input', { bubbles: true }));
+                    targetSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            });
+
+            menu.appendChild(item);
+        });
+
+        activeMenu = menu;
+        document.body.appendChild(menu);
+        positionSattvaSelectMenu();
+
+        const selectedItem = menu.querySelector('.sattva-custom-select-option.is-selected');
+        if (selectedItem) {
+            selectedItem.scrollIntoView({ block: 'nearest' });
+        }
+    }
+
+    document.addEventListener('mousedown', function (e) {
+        if (activeMenu && (activeMenu === e.target || activeMenu.contains(e.target))) {
+            return;
+        }
+
+        const selectEl = e.target.closest('select.form-select:not([multiple])');
+        if (selectEl) {
+            if (selectEl.disabled) return;
+            e.preventDefault();
+            lastMousedownTime = Date.now();
+            selectEl.focus();
+
+            if (activeSelect === selectEl) {
+                closeSattvaSelectMenu();
+            } else {
+                openSattvaSelectMenu(selectEl);
+            }
+            return;
+        }
+
+        if (activeMenu) {
+            closeSattvaSelectMenu();
+        }
+    }, true);
+
+    document.addEventListener('click', function (e) {
+        const selectEl = e.target.closest('select.form-select:not([multiple])');
+        if (!selectEl || selectEl.disabled) return;
+        e.preventDefault();
+
+        if (Date.now() - lastMousedownTime > 300) {
+            if (activeSelect === selectEl) {
+                closeSattvaSelectMenu();
+            } else {
+                openSattvaSelectMenu(selectEl);
+            }
+        }
+    }, true);
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' || e.key === 'Tab') {
+            if (activeMenu) {
+                closeSattvaSelectMenu();
+            }
+            return;
+        }
+
+        const selectEl = e.target.closest && e.target.closest('select.form-select:not([multiple])');
+        if (!selectEl || selectEl.disabled) return;
+
+        if (e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (activeSelect !== selectEl || !activeMenu) {
+                openSattvaSelectMenu(selectEl);
+                return;
+            }
+
+            if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                const delta = e.key === 'ArrowDown' ? 1 : -1;
+                const nextIdx = Math.max(0, Math.min(selectEl.options.length - 1, selectEl.selectedIndex + delta));
+                if (nextIdx !== selectEl.selectedIndex && !selectEl.options[nextIdx].disabled) {
+                    selectEl.selectedIndex = nextIdx;
+                    selectEl.value = selectEl.options[nextIdx].value;
+                    selectEl.dispatchEvent(new Event('input', { bubbles: true }));
+                    selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+                    openSattvaSelectMenu(selectEl);
+                }
+            } else if (e.key === 'Enter') {
+                closeSattvaSelectMenu();
+            }
+        }
+    }, true);
+
+    window.addEventListener('scroll', function (e) {
+        if (!activeMenu) return;
+        if (e.target === activeMenu || activeMenu.contains(e.target)) return;
+        positionSattvaSelectMenu();
+    }, true);
+
+    window.addEventListener('resize', function () {
+        if (activeMenu) {
+            positionSattvaSelectMenu();
+        }
+    });
+
+    document.addEventListener('hide.bs.modal', function () {
+        closeSattvaSelectMenu();
+    });
+
+    document.addEventListener('submit', function () {
+        closeSattvaSelectMenu();
+    }, true);
+})();
+
+// ============================================================================
+// GLOBAL 10-CHARACTER VALIDATION & INPUT ENFORCEMENT FOR MOBILE & PAN
+// ============================================================================
+(function () {
+    const mobileSelector = 'input[name="mobile"], input[name="phone"], input[name="contact_number"]';
+    const panSelector = 'input[name="pan"]';
+
+    function enforceMobileAndPanAttributes(root) {
+        const scope = root || document;
+        scope.querySelectorAll(mobileSelector).forEach(function (el) {
+            el.setAttribute('maxlength', '10');
+            el.setAttribute('minlength', '10');
+            el.setAttribute('pattern', '[0-9]{10}');
+            el.setAttribute('inputmode', 'numeric');
+        });
+        scope.querySelectorAll(panSelector).forEach(function (el) {
+            el.setAttribute('maxlength', '10');
+            el.setAttribute('minlength', '10');
+            el.setAttribute('pattern', '[A-Za-z0-9]{10}');
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        enforceMobileAndPanAttributes(document);
+    });
+
+    document.addEventListener('show.bs.modal', function (e) {
+        if (e.target) {
+            enforceMobileAndPanAttributes(e.target);
+        }
+    });
+
+    document.addEventListener('input', function (e) {
+        const el = e.target;
+        if (!el || el.tagName !== 'INPUT') return;
+
+        if (el.matches(mobileSelector)) {
+            const cleaned = el.value.replace(/\D/g, '').slice(0, 10);
+            if (el.value !== cleaned) {
+                el.value = cleaned;
+            }
+            if (cleaned.length > 0 && cleaned.length < 10) {
+                el.setCustomValidity('Mobile number must be exactly 10 digits.');
+            } else {
+                el.setCustomValidity('');
+            }
+        } else if (el.matches(panSelector)) {
+            const cleaned = el.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 10);
+            if (el.value !== cleaned) {
+                el.value = cleaned;
+            }
+            if (cleaned.length > 0 && cleaned.length < 10) {
+                el.setCustomValidity('PAN number must be exactly 10 alphanumeric characters.');
+            } else {
+                el.setCustomValidity('');
+            }
+        }
+    });
+})();

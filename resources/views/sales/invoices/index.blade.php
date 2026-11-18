@@ -57,8 +57,8 @@
                         <td class="fw-semibold text-dark">{{ $inv->customer->name ?? '-' }}</td>
                         <td class="fw-bold">₹{{ number_format($inv->total_amount, 2) }}</td>
                         <td class="text-success">₹{{ number_format($inv->paid_amount ?? 0, 2) }}</td>
-                        <td class="text-danger fw-bold">₹{{ number_format($inv->total_amount - ($inv->paid_amount ?? 0), 2) }}</td>
-                        <td><span class="badge-status badge-status-{{ strtolower(str_replace(' ', '-', $inv->status)) }}">{{ $inv->status }}</span></td>
+                        <td class="text-danger fw-bold">₹{{ number_format($inv->balance_amount ?? max(0, $inv->total_amount - ($inv->paid_amount ?? 0)), 2) }}</td>
+                        <td><span class="badge-status badge-status-{{ strtolower(str_replace(' ', '-', $inv->payment_status)) }}">{{ $inv->payment_status }}</span></td>
                         <td class="text-end">
                             <a href="{{ route('sales.invoices.show', $inv) }}" class="btn btn-sm btn-icon btn-outline-secondary me-1"><i class="bi bi-eye"></i></a>
                             <a href="{{ route('sales.invoices.pdf', $inv) }}" class="btn btn-sm btn-icon btn-outline-info" title="PDF Invoice"><i class="bi bi-printer"></i></a>

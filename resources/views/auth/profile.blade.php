@@ -46,7 +46,7 @@
 
                         <div class="col-md-6">
                             <label class="form-label small fw-semibold text-muted">Mobile Number</label>
-                            <input type="text" name="mobile" class="form-control @error('mobile') is-invalid @enderror" value="{{ old('mobile', $user->mobile) }}">
+                            <input type="text" name="mobile" class="form-control @error('mobile') is-invalid @enderror" value="{{ old('mobile', $user->mobile) }}" placeholder="9876543210" maxlength="10" minlength="10" pattern="[0-9]{10}" inputmode="numeric" title="Mobile number must be exactly 10 digits">
                             @error('mobile')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
 

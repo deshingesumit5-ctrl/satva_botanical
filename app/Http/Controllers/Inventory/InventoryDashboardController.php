@@ -40,7 +40,7 @@ class InventoryDashboardController extends Controller
         }])->where('status', 'Active')->get();
 
         // Expiring Soon Lots Table
-        $expiringLots = StockLot::with(['material', 'product', 'warehouse'])
+        $expiringLots = StockLot::with(['material.baseUom', 'product.baseUom', 'warehouse'])
             ->where('expiry_date', '>=', now())
             ->where('expiry_date', '<=', now()->addDays(60))
             ->where('available_qty', '>', 0)

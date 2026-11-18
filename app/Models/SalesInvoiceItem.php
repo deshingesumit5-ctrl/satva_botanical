@@ -37,4 +37,19 @@ class SalesInvoiceItem extends Model
     {
         return $this->belongsTo(Uom::class);
     }
+
+    public function getUnitPriceAttribute()
+    {
+        return $this->attributes['rate'] ?? 0;
+    }
+
+    public function getTaxPercentAttribute()
+    {
+        return $this->attributes['gst_rate'] ?? 0;
+    }
+
+    public function getLineTotalAttribute()
+    {
+        return $this->attributes['total_amount'] ?? 0;
+    }
 }

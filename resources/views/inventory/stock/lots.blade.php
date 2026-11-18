@@ -53,7 +53,7 @@
                         <td class="fw-semibold text-dark">{{ $lot->material->name ?? $lot->product->name ?? '-' }}</td>
                         <td>{{ $lot->warehouse->name ?? '-' }}</td>
                         <td>{{ $lot->initial_quantity }} {{ $lot->uom->symbol ?? '' }}</td>
-                        <td class="fw-bold">{{ $lot->current_quantity }} {{ $lot->uom->symbol ?? '' }}</td>
+                        <td>{{ $lot->current_quantity }} {{ $lot->uom->symbol ?? '' }}</td>
                         <td>₹{{ number_format($lot->unit_cost ?? 0, 2) }}</td>
                         <td><span class="badge-status badge-status-{{ strtolower($lot->status) }}">{{ $lot->status }}</span></td>
                     </tr>

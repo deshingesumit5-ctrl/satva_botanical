@@ -45,7 +45,7 @@ class AllRoutesAccessibilityTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->adminUser = User::where('username', 'admin')->first();
+        $this->adminUser = User::where('email', 'admin@gmail.com')->first();
     }
 
     public function test_all_get_routes_return_successful_or_redirect_status_and_never_500()

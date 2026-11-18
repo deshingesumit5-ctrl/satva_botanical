@@ -63,7 +63,7 @@ class UserController extends Controller
             'email'         => 'required|email|max:255|unique:users,email',
             'username'      => 'required|string|max:50|unique:users,username',
             'password'      => 'required|string|min:8|confirmed',
-            'mobile'        => 'nullable|string|max:20',
+            'mobile'        => 'nullable|digits:10',
             'role_id'       => 'required|exists:roles,id',
             'department_id' => 'nullable|exists:departments,id',
             'plant_id'      => 'nullable|exists:plants,id',
@@ -130,7 +130,7 @@ class UserController extends Controller
             'name'          => 'required|string|max:100',
             'employee_code' => ['nullable', 'string', 'max:30', Rule::unique('users', 'user_id')->ignore($user->id)],
             'email'         => ['required', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
-            'mobile'        => 'nullable|string|max:20',
+            'mobile'        => 'nullable|digits:10',
             'password'      => $passwordRule,
             'role_id'       => 'required|exists:roles,id',
             'department_id' => 'nullable|exists:departments,id',
@@ -179,7 +179,7 @@ class UserController extends Controller
             return back()->with('error', "You cannot delete your own account.");
         }
 
-        if ($user->isSuperAdmin()) {
+        if ($user->user_id === 'USR-0001' || $user->isSuperAdmin()) {
             return back()->with('error', "Super Admin account cannot be deleted.");
         }
 
@@ -212,7 +212,7 @@ class UserController extends Controller
     public function resetPassword(Request $request, User $user)
     {
         $newPassword = Str::random(10) . '@1';
-        $user->password = Hash::make($newPassword);
+        $user->password = $newPassword;
         $user->save();
 
         AuditService::log('admin', $user->user_id, 'reset_password', null, null, 'Admin reset user password');

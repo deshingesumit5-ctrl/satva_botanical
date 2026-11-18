@@ -44,7 +44,7 @@ class StockAdjustmentController extends Controller
 
     public function create()
     {
-        $lots = StockLot::with(['material', 'product', 'warehouse'])
+        $lots = StockLot::with(['material.baseUom', 'product.baseUom', 'warehouse'])
             ->where('status', 'Active')
             ->get();
 

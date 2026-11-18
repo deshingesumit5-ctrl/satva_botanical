@@ -37,7 +37,7 @@ class PlantController extends Controller
             'code' => 'required|string|max:30|unique:plants,code',
             'name' => 'required|string|max:100',
             'address' => 'nullable|string',
-            'contact' => 'nullable|string|max:30',
+            'contact' => 'nullable|digits:10',
             'email' => 'nullable|email|max:100',
             'gstin' => 'nullable|string|max:15',
             'status' => 'required|in:Active,Inactive',
@@ -62,7 +62,7 @@ class PlantController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:100',
             'address' => 'nullable|string',
-            'contact' => 'nullable|string|max:30',
+            'contact' => 'nullable|digits:10',
             'email' => 'nullable|email|max:100',
             'gstin' => 'nullable|string|max:15',
             'status' => 'required|in:Active,Inactive',

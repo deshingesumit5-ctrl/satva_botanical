@@ -48,7 +48,9 @@ class DemoTransactionSeeder extends Seeder
 {
     public function run(): void
     {
-        $admin = User::where('username', 'admin')->first() ?? User::first();
+        $admin = User::where('email', 'admin@gmail.com')->first()
+            ?? User::where('user_id', 'USR-0001')->first()
+            ?? User::first();
         $plant = Plant::first();
         $whRm = Warehouse::where('code', 'WH-RM')->first() ?? Warehouse::first();
         $whFg = Warehouse::where('code', 'WH-FG')->first() ?? Warehouse::first();

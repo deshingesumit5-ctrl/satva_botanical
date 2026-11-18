@@ -70,7 +70,7 @@
                         <tbody>
                             @forelse($purchaseInvoices as $pi)
                             <tr>
-                                <td class="fw-bold font-monospace">{{ $pi->invoice_number }}</td>
+                                <td class="fw-bold font-monospace">{{ $pi->internal_invoice_number }}</td>
                                 <td>{{ $pi->supplier->name ?? '-' }}</td>
                                 <td class="text-end fw-bold">₹{{ number_format($pi->total_amount, 2) }}</td>
                             </tr>

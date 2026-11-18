@@ -31,4 +31,14 @@ class Dispatch extends Model
     {
         return $this->hasMany(DispatchItem::class);
     }
+
+    public function salesInvoice()
+    {
+        return $this->hasOne(SalesInvoice::class);
+    }
+
+    public function getTransporterNameAttribute()
+    {
+        return $this->attributes['transport_details'] ?? null;
+    }
 }

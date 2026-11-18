@@ -21,7 +21,8 @@
                             <option value="">All Warehouses</option>
                             @foreach($warehouses as $w)
                                 <option value="{{ $w->id }}" {{ request('warehouse_id') == $w->id ? 'selected' : '' }}>
-                            {{ $w->name }}</option>@endforeach
+                                    {{ $w->name }}
+                            </option>@endforeach
                         </select>
                     </div>
                     <div class="col-md-2">
@@ -88,7 +89,7 @@
     </div>
 
     <div class="modal fade" id="addLocModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-dialog modal-dialog-centered modal-lg sattva-modal-lg">
             <div class="modal-content border-0 rounded-4 shadow">
                 <div class="modal-header border-0 pb-0">
                     <h5 class="modal-title fw-bold">Add Storage Location</h5><button type="button" class="btn-close"
@@ -130,7 +131,7 @@
     </div>
 
     <div class="modal fade" id="editLocModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-dialog modal-dialog-centered modal-lg sattva-modal-lg">
             <div class="modal-content border-0 rounded-4 shadow">
                 <div class="modal-header border-0 pb-0">
                     <h5 class="modal-title fw-bold">Update Location</h5><button type="button" class="btn-close"
